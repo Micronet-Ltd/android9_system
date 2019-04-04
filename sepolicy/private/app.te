@@ -5,3 +5,6 @@ allow appdomain zygote_tmpfs:file read;
 neverallow appdomain system_server:udp_socket {
         accept append bind create ioctl listen lock name_bind
         relabelfrom relabelto setattr shutdown };
+# Allow apps to access iodriver sockets
+allow appdomain iodriver:unix_dgram_socket { create_socket_perms sendto };
+allow appdomain iodriver:unix_stream_socket { create_stream_socket_perms connectto };

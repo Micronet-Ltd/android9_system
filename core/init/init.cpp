@@ -754,7 +754,18 @@ int main(int argc, char** argv) {
     am.QueueBuiltinAction(MixHwrngIntoLinuxRngAction, "MixHwrngIntoLinuxRng");
 
     // Don't mount filesystems or start core system services in charger mode.
+    int is_charger = 0;
+    int wd_fd = open("/sys/devices/soc/soc:watchdogpin/wd_toggle_active", O_WRONLY);
+    char wd_toggle[2] = {0};
     std::string bootmode = GetProperty("ro.bootmode", "");
+    is_charger = (bootmode == "charger");
+    sprintf(wd_toggle, "%d", (0 == is_charger));
+    LOG(INFO) << "Boot mode: " << bootmode.c_str() << "[" << wd_toggle << "]\n";
+    if (wd_fd) {
+        write(wd_fd, wd_toggle, strlen(wd_toggle));
+        close(wd_fd);
+    }
+
     if (bootmode == "charger") {
         am.QueueEventTrigger("charger");
     } else {
