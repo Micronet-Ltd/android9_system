@@ -59,4 +59,5 @@ extern void* nfa_mem_co_alloc(uint32_t num_bytes);
 *******************************************************************************/
 extern void nfa_mem_co_free(void* p_buf);
 
+
 #endif /* NFA_MEM_CO_H */

@@ -67,7 +67,8 @@
 #define NFA_P2P_CONGEST_EVT 0x08
 /* link MIU and Well-Known Service list         */
 #define NFA_P2P_LINK_INFO_EVT 0x09
-#define NFA_P2P_SDP_EVT 0x0A /* Remote SAP of SDP result */
+/* Remote SAP of SDP result                     */
+#define NFA_P2P_SDP_EVT 0x0A
 
 typedef uint8_t tNFA_P2P_EVT;
 
@@ -282,7 +283,7 @@ extern tNFA_STATUS NFA_P2pRejectConn(tNFA_HANDLE conn_handle);
 **                  connecting data link connection.
 **
 **                  discard any pending data on data link connection if flush is
-**                  set to TRUE
+**                  set to true
 **
 **                  NFA_P2P_DISC_EVT will be returned after data link connection
 **                  is disconnected
@@ -359,7 +360,7 @@ extern tNFA_STATUS NFA_P2pSendUI(tNFA_HANDLE handle, uint8_t dsap,
 **                  - Information of UI PDU up to max_data_len is copied into
 **                    p_data.
 **                  - If more information of UI PDU or more UI PDU in queue then
-**                    more is returned to TRUE.
+**                    more is returned to true.
 **                  - Information of next UI PDU is not concatenated.
 **
 ** Returns          NFA_STATUS_OK if successfully initiated
@@ -411,7 +412,7 @@ extern tNFA_STATUS NFA_P2pSendData(tNFA_HANDLE conn_handle, uint16_t length,
 **                  - Information of I PDU is copied into p_data up to
 **                    max_data_len.
 **                  - If more information of I PDU or more I PDU in queue, then
-**                    more is returned to TRUE.
+**                    more is returned to true.
 **                  - Information of next I PDU is not concatenated.
 **
 ** Returns          NFA_STATUS_OK if successfully initiated

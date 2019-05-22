@@ -30,15 +30,8 @@ const uint8_t nfa_dm_ce_cfg[] = {
     NCI_PARAM_LEN_LF_T3T_PMM,
     0x01, /* This PAD0 is used to identify HCE-F on Android */
     0xFE, /* This PAD0 is used to identify HCE-F on Android */
-    0xFF,
-    0xFF,
-    0xFF,
-    0xFF,
-    0xFF,
-    0xFF,
-    NFC_PMID_FWI, /* FWI for ISO-DEP */
-    1,
-    CE_T4T_ISO_DEP_FWI};
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, NFC_PMID_FWI, /* FWI for ISO-DEP */
+    1, CE_T4T_ISO_DEP_FWI};
 
 uint8_t* p_nfa_dm_ce_cfg = (uint8_t*)nfa_dm_ce_cfg;
 
@@ -96,13 +89,33 @@ tNFA_HCI_CFG* p_nfa_hci_cfg = (tNFA_HCI_CFG*)&nfa_hci_cfg;
 
 bool nfa_poll_bail_out_mode = false;
 tNFA_PROPRIETARY_CFG nfa_proprietary_cfg = {
-    0x80, /* NCI_PROTOCOL_18092_ACTIVE */
+#if (NXP_EXTNS == TRUE)
+    0x05, /* NCI_PROTOCOL_18092_ACTIVE */
+#else
+    0x80,
+#endif
     0x81, /* NCI_PROTOCOL_B_PRIME */
     0x82, /* NCI_PROTOCOL_DUAL */
+#if (NXP_EXTNS == TRUE)
+    0x06,
+#else
     0x83, /* NCI_PROTOCOL_15693 */
+#endif
+#if (NXP_EXTNS == TRUE)
+    0x81,
+#else
     0x8A, /* NCI_PROTOCOL_KOVIO */
+#endif
+#if (NXP_EXTNS == TRUE)
+    0x80,
+#else
     0xFF, /* NCI_PROTOCOL_MIFARE */
+#endif
+#if (NXP_EXTNS == TRUE)
+    0x70,
+#else
     0x77, /* NCI_DISCOVERY_TYPE_POLL_KOVIO */
+#endif
     0x74, /* NCI_DISCOVERY_TYPE_POLL_B_PRIME */
     0xF4, /* NCI_DISCOVERY_TYPE_LISTEN_B_PRIME */
 };

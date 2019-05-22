@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright (C) 2017 NXP Semiconductors
+ * Copyright (C) 2017-2018 NXP Semiconductors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,5 +24,6 @@
 
 #ifndef NFC_VS_H_
 #define NFC_VS_H_
+
 
 #endif /* NFC_VS_H_ */

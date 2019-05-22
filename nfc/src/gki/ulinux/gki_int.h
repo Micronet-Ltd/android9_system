@@ -18,8 +18,9 @@
 #ifndef GKI_INT_H
 #define GKI_INT_H
 
-#include <pthread.h>
 #include "gki_common.h"
+#include <stdlib.h>
+#include <pthread.h>
 
 /**********************************************************************
 ** OS specific definitions

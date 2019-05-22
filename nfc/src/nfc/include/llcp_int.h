@@ -18,6 +18,26 @@
 
 /******************************************************************************
  *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
+
+/******************************************************************************
+ *
  *  This file contains LLCP internal definitions
  *
  ******************************************************************************/
@@ -60,10 +80,10 @@ typedef struct {
       p_link_cback; /* callback function to report llcp link status */
   uint16_t wks;     /* well-known service bit-map                   */
 
-  bool is_initiator;    /* TRUE if initiator role                       */
-  bool is_sending_data; /* TRUE if llcp_link_check_send_data() is excuting    */
+  bool is_initiator;    /* true if initiator role                       */
+  bool is_sending_data; /* true if llcp_link_check_send_data() is excuting    */
   uint8_t flags;        /* LLCP internal flags                          */
-  bool received_first_packet; /* TRUE if a packet has been received from remote
+  bool received_first_packet; /* true if a packet has been received from remote
                                  */
   uint8_t agreed_major_version; /* llcp major version used in activated state */
   uint8_t agreed_minor_version; /* llcp minor version used in activated state */
@@ -77,7 +97,7 @@ typedef struct {
 
   TIMER_LIST_ENT timer; /* link timer for LTO and SYMM response         */
   uint8_t symm_state;   /* state of symmectric procedure                */
-  bool ll_served;       /* TRUE if last transmisstion was for UI        */
+  bool ll_served;       /* true if last transmisstion was for UI        */
   uint8_t ll_idx;       /* for scheduler of logical link connection     */
   uint8_t dl_idx;       /* for scheduler of data link connection        */
 
@@ -99,7 +119,6 @@ typedef struct {
   uint16_t data_link_timeout; /* data link conneciton timeout                 */
   uint16_t delay_first_pdu_timeout; /* delay timeout to send first PDU as
                                        initiator */
-
 } tLLCP_LCB;
 
 /*
@@ -107,13 +126,13 @@ typedef struct {
 */
 
 typedef struct {
-  uint8_t link_type;    /* logical link and/or data link                */
+  uint8_t link_type;       /* logical link and/or data link                */
   char* p_service_name; /* GKI buffer containing service name           */
   tLLCP_APP_CBACK* p_app_cback; /* application's callback pointer */
 
   BUFFER_Q ui_xmit_q;      /* UI PDU queue for transmitting                */
   BUFFER_Q ui_rx_q;        /* UI PDU queue for receiving                   */
-  bool is_ui_tx_congested; /* TRUE if transmitting UI PDU is congested     */
+  bool is_ui_tx_congested; /* true if transmitting UI PDU is congested     */
 
 } tLLCP_APP_CB;
 
@@ -174,12 +193,12 @@ typedef struct {
   uint8_t local_sap;  /* SAP of local end point                   */
   uint16_t local_miu; /* MIU of local SAP                         */
   uint8_t local_rw;   /* RW of local SAP                          */
-  bool local_busy;    /* TRUE if local SAP is busy                */
+  bool local_busy;    /* true if local SAP is busy                */
 
   uint8_t remote_sap;  /* SAP of remote end point                  */
   uint16_t remote_miu; /* MIU of remote SAP                        */
   uint8_t remote_rw;   /* RW of remote SAP                         */
-  bool remote_busy;    /* TRUE if remote SAP is busy               */
+  bool remote_busy;    /* true if remote SAP is busy               */
 
   uint8_t next_tx_seq;  /* V(S), send state variable                */
   uint8_t rcvd_ack_seq; /* V(SA), send ack state variable           */
@@ -187,10 +206,10 @@ typedef struct {
   uint8_t sent_ack_seq; /* V(RA), receive ack state variable        */
 
   BUFFER_Q i_xmit_q;    /* tx queue of I PDU                        */
-  bool is_tx_congested; /* TRUE if tx I PDU is congested            */
+  bool is_tx_congested; /* true if tx I PDU is congested            */
 
   BUFFER_Q i_rx_q;              /* rx queue of I PDU                        */
-  bool is_rx_congested;         /* TRUE if rx I PDU is congested            */
+  bool is_rx_congested;         /* true if rx I PDU is congested            */
   uint8_t num_rx_i_pdu;         /* number of I PDU in rx queue              */
   uint8_t rx_congest_threshold; /* dynamic congest threshold for rx I PDU */
 
@@ -241,7 +260,7 @@ typedef struct {
 
   uint8_t total_tx_ui_pdu;   /* total number of tx UI PDU in all of ui_xmit_q*/
   uint8_t total_tx_i_pdu;    /* total number of tx I PDU in all of i_xmit_q  */
-  bool overall_tx_congested; /* TRUE if tx link is congested                 */
+  bool overall_tx_congested; /* true if tx link is congested                 */
 
   /* start point of uncongested status notification is in round robin */
   uint8_t ll_tx_uncongest_ntf_start_sap; /* next start of logical data link */
@@ -273,7 +292,7 @@ typedef struct {
   bool dta_snl_resp; /* TRUE if need to notify DTA when respoding SNL*/
 } tLLCP_CB;
 
-#if (LLCP_TEST_INCLUDED == TRUE) /* this is for LLCP testing */
+#if (LLCP_TEST_INCLUDED == true) /* this is for LLCP testing */
 
 typedef struct {
   uint8_t version;
@@ -281,6 +300,7 @@ typedef struct {
 } tLLCP_TEST_PARAMS;
 
 #endif
+
 
 /*
 ** LLCP global data
@@ -357,4 +377,5 @@ uint8_t llcp_sdp_get_sap_by_name(char* p_name, uint8_t length);
 tLLCP_STATUS llcp_sdp_proc_snl(uint16_t sdu_length, uint8_t* p);
 void llcp_sdp_check_send_snl(void);
 void llcp_sdp_proc_deactivation(void);
+
 #endif

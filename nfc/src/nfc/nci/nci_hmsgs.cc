@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 /******************************************************************************
  *
@@ -23,12 +42,20 @@
  *
  ******************************************************************************/
 #include <string.h>
+
+#include <android-base/stringprintf.h>
+#include <base/logging.h>
+
 #include "nfc_target.h"
 
 #include "nci_defs.h"
 #include "nci_hmsgs.h"
 #include "nfc_api.h"
 #include "nfc_int.h"
+
+using android::base::StringPrintf;
+
+extern bool nfc_debug_enabled;
 
 /*******************************************************************************
 **
@@ -73,7 +100,6 @@ uint8_t nci_snd_core_reset(uint8_t reset_type) {
 uint8_t nci_snd_core_init(uint8_t nci_version) {
   NFC_HDR* p;
   uint8_t* pp;
-
   if ((p = NCI_GET_CMD_BUF(NCI_CORE_PARAM_SIZE_INIT(nci_version))) == NULL)
     return (NCI_STATUS_FAILED);
 
@@ -86,11 +112,10 @@ uint8_t nci_snd_core_init(uint8_t nci_version) {
   NCI_MSG_BLD_HDR0(pp, NCI_MT_CMD, NCI_GID_CORE);
   NCI_MSG_BLD_HDR1(pp, NCI_MSG_CORE_INIT);
   UINT8_TO_STREAM(pp, NCI_CORE_PARAM_SIZE_INIT(nci_version));
-  if (nfc_cb.nci_version == NCI_VERSION_2_0) {
+  if(nfc_cb.nci_version == NCI_VERSION_2_0) {
     UINT8_TO_STREAM(pp, NCI2_0_CORE_INIT_CMD_BYTE_0);
     UINT8_TO_STREAM(pp, NCI2_0_CORE_INIT_CMD_BYTE_1);
   }
-
   nfc_ncif_send_cmd(p);
   return (NCI_STATUS_OK);
 }
@@ -107,21 +132,51 @@ uint8_t nci_snd_core_init(uint8_t nci_version) {
 uint8_t nci_snd_core_get_config(uint8_t* param_ids, uint8_t num_ids) {
   NFC_HDR* p;
   uint8_t* pp;
+#if (NXP_EXTNS == TRUE)
+  uint8_t bytes;
+  uint8_t propConfigCnt;
+#endif
 
   p = NCI_GET_CMD_BUF(num_ids);
   if (p == NULL) return (NCI_STATUS_FAILED);
+#if (NXP_EXTNS == TRUE)
+  uint32_t idx = 0;
+  uint8_t* params = param_ids;
+  propConfigCnt = 0;
+  for (idx = 0; idx < num_ids; idx++) {
+    if (*params == 0xA0) {
+      params++;
+      propConfigCnt++;
+    }
+    params++;
+  }
+  bytes = (num_ids - propConfigCnt) + (propConfigCnt << 1);
+#endif
 
   p->event = BT_EVT_TO_NFC_NCI;
+#if (NXP_EXTNS == TRUE)
+  p->len = NCI_MSG_HDR_SIZE + bytes + 1;
+#else
   p->len = NCI_MSG_HDR_SIZE + num_ids + 1;
+#endif
+
   p->offset = NCI_MSG_OFFSET_SIZE;
   p->layer_specific = 0;
   pp = (uint8_t*)(p + 1) + p->offset;
 
   NCI_MSG_BLD_HDR0(pp, NCI_MT_CMD, NCI_GID_CORE);
   NCI_MSG_BLD_HDR1(pp, NCI_MSG_CORE_GET_CONFIG);
+#if (NXP_EXTNS == TRUE)
+  UINT8_TO_STREAM(pp, (uint8_t)(bytes + 1));
+#else
   UINT8_TO_STREAM(pp, (uint8_t)(num_ids + 1));
+#endif
   UINT8_TO_STREAM(pp, num_ids);
+#if (NXP_EXTNS == TRUE)
+  ARRAY_TO_STREAM(pp, param_ids, bytes);
+#else
   ARRAY_TO_STREAM(pp, param_ids, num_ids);
+#endif
 
   nfc_ncif_send_cmd(p);
   return (NCI_STATUS_OK);
@@ -244,7 +299,7 @@ uint8_t nci_snd_core_conn_close(uint8_t conn_id) {
   return (NCI_STATUS_OK);
 }
 
-#if (NFC_NFCEE_INCLUDED == TRUE)
+#if (NFC_NFCEE_INCLUDED == true)
 #if (NFC_RW_ONLY == FALSE)
 /*******************************************************************************
 **
@@ -260,26 +315,109 @@ uint8_t nci_snd_nfcee_discover(uint8_t discover_action) {
   NFC_HDR* p;
   uint8_t* pp;
 
-  p = NCI_GET_CMD_BUF(NCI_PARAM_SIZE_DISCOVER_NFCEE(NFC_GetNCIVersion()));
+  p = NCI_GET_CMD_BUF(NCI_PARAM_SIZE_DISCOVER_NFCEE(nfc_cb.nci_version));
   if (p == NULL) return (NCI_STATUS_FAILED);
 
   p->event = BT_EVT_TO_NFC_NCI;
-  p->len =
-      NCI_MSG_HDR_SIZE + NCI_PARAM_SIZE_DISCOVER_NFCEE(NFC_GetNCIVersion());
+  p->len = NCI_MSG_HDR_SIZE +NCI_PARAM_SIZE_DISCOVER_NFCEE(nfc_cb.nci_version);
   p->offset = NCI_MSG_OFFSET_SIZE;
   p->layer_specific = 0;
   pp = (uint8_t*)(p + 1) + p->offset;
 
   NCI_MSG_BLD_HDR0(pp, NCI_MT_CMD, NCI_GID_EE_MANAGE);
   NCI_MSG_BLD_HDR1(pp, NCI_MSG_NFCEE_DISCOVER);
-  UINT8_TO_STREAM(pp, NCI_PARAM_SIZE_DISCOVER_NFCEE(NFC_GetNCIVersion()));
-  if (NFC_GetNCIVersion() != NCI_VERSION_2_0) {
+  UINT8_TO_STREAM(pp, NCI_PARAM_SIZE_DISCOVER_NFCEE(nfc_cb.nci_version));
+  if(nfc_cb.nci_version != NCI_VERSION_2_0) {
     UINT8_TO_STREAM(pp, discover_action);
   }
   nfc_ncif_send_cmd(p);
   return (NCI_STATUS_OK);
 }
+#if (NXP_EXTNS == TRUE)
+/*******************************************************************************
+**
+** Function         nci_snd_pwr_nd_lnk_ctrl_cmd
+**
+** Description      CMD for NFCC which manages the power supply and
+**                  communication links between the NFCC and its connected
+*NFCEEs.
+**
+** Returns          status
+**
+*******************************************************************************/
+uint8_t nci_snd_pwr_nd_lnk_ctrl_cmd(uint8_t nfcee_id, uint8_t cfg_value,
+                                    tNFC_INTF_REQ_SRC reqSrc) {
+  DLOG_IF(INFO, nfc_debug_enabled)
+      << StringPrintf("nci_snd_pwr_nd_lnk_ctrl_cmd() Enter ");
+    if(!nfcFL.eseFL._WIRED_MODE_STANDBY) {
+        DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("WIRED_MODE_STANDBY not available. Returning");
+        return (NCI_STATUS_FAILED);
+    }
+  NFC_HDR* p;
+  uint8_t* pp;
+  if (nfcFL.eseFL._ESE_DUAL_MODE_PRIO_SCHEME ==
+          nfcFL.eseFL._ESE_WIRED_MODE_RESUME) {
+          nfc_cb.pwr_link_cmd.reqSrc = reqSrc;
+      if (nfc_cb.bBlkPwrlinkAndModeSetCmd && (cfg_value != 0x00)) {
+          DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("pwr link cmd ignored due to RF session");
+          nfc_cb.pwr_link_cmd.bPwrLinkCmdRequested = true;
+          nfc_cb.pwr_link_cmd.param = cfg_value;
+          nfc_start_quick_timer(
+              &nfc_cb.nci_wait_pwrLinkRsp_timer, NFC_TTYPE_PWR_LINK_RSP,
+              ((uint32_t)DWP_BLOCK_TIMEOUT) * QUICK_TIMER_TICKS_PER_SEC / 1000);
+          return (NCI_STATUS_OK);
+      }
+  }
+  if ((p = NCI_GET_CMD_BUF(nfcFL.nfcMwFL._NCI_PWR_LINK_PARAM_CMD_SIZE)) == NULL)
+    return (NCI_STATUS_FAILED);
 
+  p->event = BT_EVT_TO_NFC_NCI;
+  p->len = NCI_MSG_HDR_SIZE + nfcFL.nfcMwFL._NCI_PWR_LINK_PARAM_CMD_SIZE;
+  p->offset = NCI_MSG_OFFSET_SIZE;
+  p->layer_specific = 0;
+  pp = (uint8_t*)(p + 1) + p->offset;
+
+  NCI_MSG_BLD_HDR0(pp, NCI_MT_CMD, NCI_GID_EE_MANAGE);
+  NCI_MSG_BLD_HDR1(pp, NCI_MSG_NFCEE_PWR_LNK_CTRL);
+  UINT8_TO_STREAM(pp, nfcFL.nfcMwFL._NCI_PWR_LINK_PARAM_CMD_SIZE);
+  UINT8_TO_STREAM(pp, nfcee_id);
+  UINT8_TO_STREAM(pp, cfg_value);
+
+  nfc_ncif_send_cmd(p);
+  return (NCI_STATUS_OK);
+}
+#endif
+
+/*******************************************************************************
+**
+** Function         nci_snd_iso_dep_nak_presence_check_cmd
+**
+** Description      compose and send RF Management presence check ISO-DEP NAK
+**                  command.
+**
+**
+** Returns          status
+**
+*******************************************************************************/
+uint8_t nci_snd_iso_dep_nak_presence_check_cmd()
+{
+    NFC_HDR *p;
+    uint8_t *pp;
+
+    if ((p = NCI_GET_CMD_BUF(0)) == NULL) return (NCI_STATUS_FAILED);
+
+    p->event            = BT_EVT_TO_NFC_NCI;
+    p->offset           = NCI_MSG_OFFSET_SIZE;
+    p->len              = NCI_MSG_HDR_SIZE + 0;
+    p->layer_specific   = 0;
+    pp                  = (uint8_t *) (p + 1) + p->offset;
+
+    NCI_MSG_BLD_HDR0 (pp, NCI_MT_CMD, NCI_GID_RF_MANAGE);
+    NCI_MSG_BLD_HDR1 (pp, NCI_MSG_RF_ISO_DEP_NAK_PRESENCE);
+    UINT8_TO_STREAM(pp, 0x00);
+    nfc_ncif_send_cmd (p);
+    return (NCI_STATUS_OK);
+}
 /*******************************************************************************
 **
 ** Function         nci_snd_nfcee_mode_set
@@ -293,7 +431,17 @@ uint8_t nci_snd_nfcee_discover(uint8_t discover_action) {
 uint8_t nci_snd_nfcee_mode_set(uint8_t nfcee_id, uint8_t nfcee_mode) {
   NFC_HDR* p;
   uint8_t* pp;
-
+  if (nfcFL.eseFL._ESE_DUAL_MODE_PRIO_SCHEME ==
+          nfcFL.eseFL._ESE_WIRED_MODE_RESUME) {
+      if ((nfc_cb.bBlkPwrlinkAndModeSetCmd) && (NFCEE_ID_ESE == nfcee_id)) {
+          DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("mode set cmd ignored due to RF session");
+          nfc_start_quick_timer(
+              &nfc_cb.nci_wait_setModeRsp_timer, NFC_TTYPE_SET_MODE_RSP,
+              ((uint32_t)DWP_BLOCK_TIMEOUT) * QUICK_TIMER_TICKS_PER_SEC / 1000);
+          nfc_cb.bSetmodeOnReq = true;
+          return NCI_STATUS_OK;
+      }
+  }
   p = NCI_GET_CMD_BUF(NCI_CORE_PARAM_SIZE_NFCEE_MODE_SET);
   if (p == NULL) return (NCI_STATUS_FAILED);
 
@@ -312,36 +460,6 @@ uint8_t nci_snd_nfcee_mode_set(uint8_t nfcee_id, uint8_t nfcee_mode) {
   nfc_ncif_send_cmd(p);
   return (NCI_STATUS_OK);
 }
-
-/*******************************************************************************
-**
-** Function         nci_snd_iso_dep_nak_presence_check_cmd
-**
-** Description      compose and send RF Management presence check ISO-DEP NAK
-**                  command.
-**
-**
-** Returns          status
-**
-*******************************************************************************/
-uint8_t nci_snd_iso_dep_nak_presence_check_cmd() {
-  NFC_HDR* p;
-  uint8_t* pp;
-
-  if ((p = NCI_GET_CMD_BUF(0)) == NULL) return (NCI_STATUS_FAILED);
-
-  p->event = BT_EVT_TO_NFC_NCI;
-  p->offset = NCI_MSG_OFFSET_SIZE;
-  p->len = NCI_MSG_HDR_SIZE + 0;
-  p->layer_specific = 0;
-  pp = (uint8_t*)(p + 1) + p->offset;
-
-  NCI_MSG_BLD_HDR0(pp, NCI_MT_CMD, NCI_GID_RF_MANAGE);
-  NCI_MSG_BLD_HDR1(pp, NCI_MSG_RF_ISO_DEP_NAK_PRESENCE);
-  UINT8_TO_STREAM(pp, 0x00);
-  nfc_ncif_send_cmd(p);
-  return (NCI_STATUS_OK);
-}
 #endif
 #endif
 
@@ -357,9 +475,15 @@ uint8_t nci_snd_iso_dep_nak_presence_check_cmd() {
 *******************************************************************************/
 uint8_t nci_snd_discover_cmd(uint8_t num, tNCI_DISCOVER_PARAMS* p_param) {
   NFC_HDR* p;
-  uint8_t *pp, *p_size, *p_start;
+  uint8_t* pp, *p_size, *p_start;
   int xx;
   int size;
+
+#if (NXP_EXTNS == TRUE)
+  if (NULL == p_param) {
+    return NCI_STATUS_FAILED;
+  }
+#endif
 
   size = num * sizeof(tNCI_DISCOVER_PARAMS) + 1;
   p = NCI_GET_CMD_BUF(size);
@@ -468,7 +592,7 @@ uint8_t nci_snd_deactivate_cmd(uint8_t de_act_type) {
 *******************************************************************************/
 uint8_t nci_snd_discover_map_cmd(uint8_t num, tNCI_DISCOVER_MAPS* p_maps) {
   NFC_HDR* p;
-  uint8_t *pp, *p_size, *p_start;
+  uint8_t* pp, *p_size, *p_start;
   int xx;
   int size;
 
@@ -498,6 +622,7 @@ uint8_t nci_snd_discover_map_cmd(uint8_t num, tNCI_DISCOVER_MAPS* p_maps) {
   nfc_ncif_send_cmd(p);
   return (NCI_STATUS_OK);
 }
+
 /*******************************************************************************
 **
 ** Function         nci_snd_t3t_polling
@@ -547,6 +672,9 @@ uint8_t nci_snd_parameter_update_cmd(uint8_t* p_param_tlvs, uint8_t tlv_size) {
   uint8_t* pp;
   uint8_t num = 0, ulen, len, *pt;
 
+  // p_param_tlvs can take max 12 elements
+  if (tlv_size > 12) return (NCI_STATUS_FAILED);
+
   p = NCI_GET_CMD_BUF(tlv_size + 1);
   if (p == NULL) return (NCI_STATUS_FAILED);
 
@@ -581,38 +709,7 @@ uint8_t nci_snd_parameter_update_cmd(uint8_t* p_param_tlvs, uint8_t tlv_size) {
   return (NCI_STATUS_OK);
 }
 
-/*******************************************************************************
-**
-** Function         nci_snd_nfcee_power_link_control
-**
-** Description      compose and send NFCEE Management NFCEE Power and Link
-**                  Control command to command queue
-**
-** Returns          status
-**
-*******************************************************************************/
-uint8_t nci_snd_nfcee_power_link_control(uint8_t nfcee_id, uint8_t pl_config) {
-  uint8_t* pp;
-  NFC_HDR* p = NCI_GET_CMD_BUF(NCI_CORE_PARAM_SIZE_NFCEE_PL_CTRL);
-  if (p == NULL) return NCI_STATUS_FAILED;
-
-  p->event = NFC_EVT_TO_NFC_NCI;
-  p->len = NCI_MSG_HDR_SIZE + NCI_CORE_PARAM_SIZE_NFCEE_PL_CTRL;
-  p->offset = NCI_MSG_OFFSET_SIZE;
-  p->layer_specific = 0;
-  pp = (uint8_t*)(p + 1) + p->offset;
-
-  NCI_MSG_BLD_HDR0(pp, NCI_MT_CMD, NCI_GID_EE_MANAGE);
-  NCI_MSG_BLD_HDR1(pp, NCI_MSG_NFCEE_POWER_LINK_CTRL);
-  UINT8_TO_STREAM(pp, NCI_CORE_PARAM_SIZE_NFCEE_PL_CTRL);
-  UINT8_TO_STREAM(pp, nfcee_id);
-  UINT8_TO_STREAM(pp, pl_config);
-
-  nfc_ncif_send_cmd(p);
-  return NCI_STATUS_OK;
-}
-
-#if (NFC_NFCEE_INCLUDED == TRUE)
+#if (NFC_NFCEE_INCLUDED == true)
 #if (NFC_RW_ONLY == FALSE)
 /*******************************************************************************
 **
@@ -632,7 +729,7 @@ uint8_t nci_snd_set_routing_cmd(bool more, uint8_t num_tlv, uint8_t tlv_size,
 
   if (tlv_size == 0) {
     /* just to terminate routing table
-     * 2 bytes (more=FALSE and num routing entries=0) */
+     * 2 bytes (more=false and num routing entries=0) */
     size = 2;
   }
 
@@ -722,4 +819,37 @@ uint8_t nci_snd_get_routing_cmd(void) {
   return (NCI_STATUS_OK);
 }
 #endif
+/*******************************************************************************
+**
+** Function         nci_snd_nfcee_power_link_control
++**
+** Description      compose and send NFCEE Management NFCEE Power and Link
+**                  Control command to command queue
+**
+** Returns          status
+**
+*******************************************************************************/
+uint8_t nci_snd_nfcee_power_link_control (uint8_t nfcee_id, uint8_t pl_config)
+{
+    NFC_HDR *p;
+    uint8_t *pp;
+
+    if ((p = NCI_GET_CMD_BUF (NCI_CORE_PARAM_SIZE_NFCEE_PL_CTRL)) == NULL)
+        return (NCI_STATUS_FAILED);
+
+    p->event            = NFC_EVT_TO_NFC_NCI;
+    p->len              = NCI_MSG_HDR_SIZE + NCI_CORE_PARAM_SIZE_NFCEE_PL_CTRL;
+    p->offset           = NCI_MSG_OFFSET_SIZE;
+    p->layer_specific   = 0;
+    pp                  = (uint8_t *) (p + 1) + p->offset;
+
+    NCI_MSG_BLD_HDR0 (pp, NCI_MT_CMD, NCI_GID_EE_MANAGE);
+    NCI_MSG_BLD_HDR1 (pp, NCI_MSG_NFCEE_POWER_LINK_CTRL);
+    UINT8_TO_STREAM (pp, NCI_CORE_PARAM_SIZE_NFCEE_PL_CTRL);
+    UINT8_TO_STREAM (pp, nfcee_id);
+    UINT8_TO_STREAM (pp, pl_config);
+
+    nfc_ncif_send_cmd (p);
+    return (NCI_STATUS_OK);
+}
 #endif

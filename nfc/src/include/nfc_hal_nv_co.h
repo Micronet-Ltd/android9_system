@@ -25,8 +25,7 @@
 #define NFC_HAL_NV_CO_H
 
 #include "nfc_hal_target.h"
-
-#if (NFC_HAL_HCI_INCLUDED == TRUE)
+#if (NFC_HAL_HCI_INCLUDED == true)
 
 #include <time.h>
 
@@ -49,9 +48,10 @@ typedef uint8_t tNFC_HAL_NV_CO_STATUS;
 /*****************************************************************************
 **  Function Declarations
 *****************************************************************************/
-/**************************
-**  Common Functions
-***************************/
+
+extern void nfa_nv_ci_read(uint16_t num_bytes_read, tNFA_NV_CO_STATUS status,
+                           uint8_t block);
+extern void nfa_nv_ci_write(tNFA_NV_CO_STATUS status);
 
 #endif /* NFC_HAL_HCI_INCLUDED */
 #endif /* NFC_HAL_NV_CO_H */

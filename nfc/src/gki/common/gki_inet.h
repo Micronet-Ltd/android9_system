@@ -20,7 +20,7 @@
 
 #include "data_types.h"
 
-#if (BIG_ENDIAN == TRUE)
+#if (BIG_ENDIAN == true)
 #define ntohs(n) (n)
 #define ntohl(n) (n)
 #define ntoh6(n) (n)

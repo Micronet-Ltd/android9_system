@@ -25,12 +25,12 @@
 #ifndef NFC_HAL_INT_H
 #define NFC_HAL_INT_H
 
+#include "nfc_hal_target.h"
 #include "gki.h"
 #include "nci_defs.h"
 #include "nfc_brcm_defs.h"
 #include "nfc_hal_api.h"
 #include "nfc_hal_int_api.h"
-#include "nfc_hal_target.h"
 
 using android::base::StringPrintf;
 
@@ -45,13 +45,13 @@ using android::base::StringPrintf;
 
 typedef uint8_t tNFC_HAL_WAIT_RSP;
 
-#if (NFC_HAL_HCI_INCLUDED == TRUE)
+#if (NFC_HAL_HCI_INCLUDED == true)
 
 #endif
 
 /* NFC HAL transport configuration */
 typedef struct {
-  bool shared_transport; /* TRUE if using shared HCI/NCI transport */
+  bool shared_transport; /* true if using shared HCI/NCI transport */
   uint8_t userial_baud;
   uint8_t userial_fc;
 } tNFC_HAL_TRANS_CFG;
@@ -77,16 +77,16 @@ typedef uint8_t tNFC_HAL_POWER_MODE;
 #define NFC_HAL_SAVED_CMD_SIZE (2)
 
 #ifndef NFC_HAL_DEBUG
-#define NFC_HAL_DEBUG TRUE
+#define NFC_HAL_DEBUG true
 #endif
 
-#if (NFC_HAL_DEBUG == TRUE)
+#if (NFC_HAL_DEBUG == true)
 extern bool nfc_debug_enabled;
 extern const char* const nfc_hal_init_state_str[];
 #define NFC_HAL_SET_INIT_STATE(state)                                        \
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(                          \
       "init state: %d->%d(%s)", nfc_hal_cb.dev_cb.initializing_state, state, \
-      nfc_hal_init_state_str[state]);                                        \
+      nfc_hal_init_state_str[state]);
   nfc_hal_cb.dev_cb.initializing_state = state;
 #else
 #define NFC_HAL_SET_INIT_STATE(state) \
@@ -104,7 +104,7 @@ typedef struct {
   uint8_t* p_param_buf;
 } tNFC_HAL_BTVSC_CPLT;
 
-#if (NFC_HAL_HCI_INCLUDED == TRUE)
+#if (NFC_HAL_HCI_INCLUDED == true)
 
 /* data type for NFC_HAL_HCI_RSP_NV_READ_EVT */
 typedef struct {
@@ -190,7 +190,7 @@ typedef struct {
       p_prop_cback; /* callback to notify complete of proprietary update */
 } tNFC_HAL_DEV_CB;
 
-#if (NFC_HAL_HCI_INCLUDED == TRUE)
+#if (NFC_HAL_HCI_INCLUDED == true)
 
 /* data members for NFC_HAL-HCI */
 typedef struct {
@@ -206,7 +206,6 @@ typedef struct {
                                       */
   bool clear_all_pipes_to_uicc1;   /* UICC1 was restarted for patch download */
   bool update_session_id; /* Next response from NFCC is to Get Session id cmd */
-  bool hci_fw_workaround; /* HAL HCI Workaround need */
   bool hci_fw_validate_netwk_cmd; /* Flag to indicate if hci network ntf to
                                      validate */
   uint8_t hcp_conn_id;            /* NCI Connection id for HCP */
@@ -214,8 +213,6 @@ typedef struct {
 } tNFC_HAL_HCI_CB;
 
 #endif
-
-typedef uint8_t tNFC_HAL_FLAGS;
 
 typedef struct {
   tHAL_NFC_CBACK* p_stack_cback;     /* Callback for HAL event notification  */
@@ -232,13 +229,12 @@ typedef struct {
   tNFC_HAL_PRM_CB prm;
   tNFC_HAL_PRM_I2C_FIX_CB prm_i2c;
 
-#if (NFC_HAL_HCI_INCLUDED == TRUE)
+#if (NFC_HAL_HCI_INCLUDED == true)
   /* data members for NFC_HAL-HCI */
   tNFC_HAL_HCI_CB hci_cb;
 #endif
 
-  uint8_t pre_discover_done; /* TRUE, when the prediscover config is complete */
-  tNFC_HAL_FLAGS hal_flags;
+  uint8_t pre_discover_done; /* true, when the prediscover config is complete */
   uint8_t pre_set_mem_idx;
 
   uint8_t max_rf_credits; /* NFC Max RF data credits */
@@ -254,7 +250,7 @@ extern uint8_t* p_nfc_hal_pre_discover_cfg;
 ** Internal nfc functions
 ****************************************************************************/
 
-#if (NFC_HAL_HCI_INCLUDED == TRUE)
+#if (NFC_HAL_HCI_INCLUDED == true)
 /* nfc_hal_hci.c */
 void nfc_hal_hci_enable(void);
 void nfc_hal_hci_evt_hdlr(tNFC_HAL_HCI_EVENT_DATA* p_evt_data);
@@ -268,12 +264,13 @@ void nfc_hal_hci_handle_build_info(uint8_t chipverlen, uint8_t* p_chipverstr);
 
 /* Define default NCI protocol trace function (if protocol tracing is enabled)
  */
-#if (NFC_HAL_TRACE_PROTOCOL == TRUE)
+#if (NFC_HAL_TRACE_PROTOCOL == true)
 #if !defined(DISP_NCI)
 #define DISP_NCI (DispNci)
 void DispNci(uint8_t* p, uint16_t len, bool is_recv);
 #endif /* DISP_NCI */
 
 #endif /* NFC_HAL_TRACE_PROTOCOL */
+
 
 #endif /* NFC_HAL_INT_H */

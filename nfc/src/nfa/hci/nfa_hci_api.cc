@@ -15,7 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
-
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 /******************************************************************************
  *
  *  NFA interface to HCI
@@ -24,14 +42,19 @@
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
 
+#include <unistd.h>
 #include "nfa_hci_api.h"
-#include "nfa_hci_defs.h"
 #include "nfa_hci_int.h"
+#include "nfa_hci_defs.h"
+
 
 using android::base::StringPrintf;
 
 extern bool nfc_debug_enabled;
 
+#if (NXP_EXTNS == TRUE)
+bool MW_RCVRY_FW_DNLD_ALLOWED;
+#endif
 /*******************************************************************************
 **
 ** Function         NFA_HciRegister
@@ -55,20 +78,16 @@ tNFA_STATUS NFA_HciRegister(char* p_app_name, tNFA_HCI_CBACK* p_cback,
   uint8_t app_name_len;
 
   if (p_app_name == NULL) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid Application name");
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(" %s: NFAInvalid Application name",__func__);
     return (NFA_STATUS_FAILED);
   }
 
   if (p_cback == NULL) {
-    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-        "Application should provide callback function to "
-        "register!");
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Application should provide callback function to register!",__func__);
     return (NFA_STATUS_FAILED);
   }
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("Application Name: %s", p_app_name);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Application Name: %s", __func__, p_app_name);
 
   app_name_len = (uint8_t)strlen(p_app_name);
 
@@ -112,13 +131,12 @@ tNFA_STATUS NFA_HciGetGateAndPipeList(tNFA_HANDLE hci_handle) {
   tNFA_HCI_API_GET_APP_GATE_PIPE* p_msg;
 
   if ((NFA_HANDLE_GROUP_MASK & hci_handle) != NFA_HANDLE_GROUP_HCI) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid hci_handle:0x%04x", hci_handle);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Invalid hci_handle:0x%04x",
+                                        __func__,hci_handle);
     return (NFA_STATUS_FAILED);
   }
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("hci_handle:0x%04x", hci_handle);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: hci_handle:0x%04x",__func__, hci_handle);
 
   /* Register the application with HCI */
   if ((nfa_hci_cb.hci_state != NFA_HCI_STATE_DISABLED) &&
@@ -156,12 +174,11 @@ tNFA_STATUS NFA_HciDeregister(char* p_app_name) {
   uint8_t app_name_len;
 
   if (p_app_name == NULL) {
-    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Invalid Application");
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Invalid Application",__func__);
     return (NFA_STATUS_FAILED);
   }
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("Application Name: %s", p_app_name);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("N%s: Application Name: %s", __func__,p_app_name);
   app_name_len = (uint8_t)strlen(p_app_name);
 
   if (app_name_len > NFA_MAX_HCI_APP_NAME_LEN) return (NFA_STATUS_FAILED);
@@ -175,7 +192,8 @@ tNFA_STATUS NFA_HciDeregister(char* p_app_name) {
   }
 
   if (xx == NFA_HCI_MAX_APP_CB) {
-    LOG(ERROR) << StringPrintf("Application Name: %s  NOT FOUND", p_app_name);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Application Name: %s  NOT FOUND",
+                                        __func__,p_app_name);
     return (NFA_STATUS_FAILED);
   }
 
@@ -216,21 +234,20 @@ tNFA_STATUS NFA_HciAllocGate(tNFA_HANDLE hci_handle, uint8_t gate) {
   tNFA_HCI_API_ALLOC_GATE* p_msg;
 
   if ((NFA_HANDLE_GROUP_MASK & hci_handle) != NFA_HANDLE_GROUP_HCI) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid hci_handle:0x%04x", hci_handle);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Invalid hci_handle:0x%04x",
+                   __func__, hci_handle);
     return (NFA_STATUS_FAILED);
   }
 
   if ((gate) && ((gate < NFA_HCI_FIRST_HOST_SPECIFIC_GENERIC_GATE) ||
                  (gate > NFA_HCI_LAST_PROP_GATE) ||
                  (gate == NFA_HCI_CONNECTIVITY_GATE))) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Cannot allocate gate:0x%02x", gate);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Cannot allocate gate:0x%02x", __func__, gate);
     return (NFA_STATUS_FAILED);
   }
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("hci_handle:0x%04x, Gate:0x%02x", hci_handle, gate);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: hci_handle:0x%04x, Gate:0x%02x",
+                 __func__, hci_handle, gate);
 
   /* Request HCI to allocate gate to the application */
   if ((nfa_hci_cb.hci_state != NFA_HCI_STATE_DISABLED) &&
@@ -263,20 +280,20 @@ tNFA_STATUS NFA_HciDeallocGate(tNFA_HANDLE hci_handle, uint8_t gate) {
   tNFA_HCI_API_DEALLOC_GATE* p_msg;
 
   if ((NFA_HANDLE_GROUP_MASK & hci_handle) != NFA_HANDLE_GROUP_HCI) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid hci_handle:0x%04x", hci_handle);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Invalid hci_handle:0x%04x",
+                   __func__, hci_handle);
     return (NFA_STATUS_FAILED);
   }
 
   if ((gate < NFA_HCI_FIRST_HOST_SPECIFIC_GENERIC_GATE) ||
       (gate > NFA_HCI_LAST_PROP_GATE) || (gate == NFA_HCI_CONNECTIVITY_GATE)) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Cannot deallocate the gate:0x%02x", gate);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Cannot deallocate the gate:0x%02x",
+                   __func__, gate);
     return (NFA_STATUS_FAILED);
   }
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("hci_handle:0x%04x, gate:0x%02X", hci_handle, gate);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: hci_handle:0x%04x, gate:0x%02X",
+                 __func__, hci_handle, gate);
 
   /* Request HCI to deallocate the gate that was previously allocated to the
    * application */
@@ -310,13 +327,12 @@ tNFA_STATUS NFA_HciGetHostList(tNFA_HANDLE hci_handle) {
   tNFA_HCI_API_GET_HOST_LIST* p_msg;
 
   if ((NFA_HANDLE_GROUP_MASK & hci_handle) != NFA_HANDLE_GROUP_HCI) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid hci_handle:0x%04x", hci_handle);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("N%s: Invalid hci_handle:0x%04x",
+                   __func__, hci_handle);
     return (NFA_STATUS_FAILED);
   }
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("hci_handle:0x%04x", hci_handle);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: hci_handle:0x%04x", __func__, hci_handle);
 
   /* Request HCI to get list of host in the hci network */
   if ((nfa_hci_cb.hci_state != NFA_HCI_STATE_DISABLED) &&
@@ -358,20 +374,20 @@ tNFA_STATUS NFA_HciCreatePipe(tNFA_HANDLE hci_handle, uint8_t source_gate_id,
   uint8_t xx;
 
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-      "hci_handle:0x%04x, source gate:0x%02X, "
+      "%s: hci_handle:0x%04x, source gate:0x%02X, "
       "destination host:0x%02X , destination gate:0x%02X",
-      hci_handle, source_gate_id, dest_host, dest_gate);
+      __func__ , hci_handle, source_gate_id, dest_host, dest_gate);
 
   if ((NFA_HANDLE_GROUP_MASK & hci_handle) != NFA_HANDLE_GROUP_HCI) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid hci_handle:0x%04x", hci_handle);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Invalid hci_handle:0x%04x",
+                   __func__, hci_handle);
     return (NFA_STATUS_FAILED);
   }
 
   if ((source_gate_id < NFA_HCI_FIRST_HOST_SPECIFIC_GENERIC_GATE) ||
       (source_gate_id > NFA_HCI_LAST_PROP_GATE)) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid local Gate:0x%02x", source_gate_id);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Invalid local Gate:0x%02x",
+                   __func__, source_gate_id);
     return (NFA_STATUS_FAILED);
   }
 
@@ -379,8 +395,8 @@ tNFA_STATUS NFA_HciCreatePipe(tNFA_HANDLE hci_handle, uint8_t source_gate_id,
        (dest_gate != NFA_HCI_LOOP_BACK_GATE) &&
        (dest_gate != NFA_HCI_IDENTITY_MANAGEMENT_GATE)) ||
       (dest_gate > NFA_HCI_LAST_PROP_GATE)) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid Destination Gate:0x%02x", dest_gate);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Invalid Destination Gate:0x%02x",
+                   __func__, dest_gate);
     return (NFA_STATUS_FAILED);
   }
 
@@ -388,8 +404,7 @@ tNFA_STATUS NFA_HciCreatePipe(tNFA_HANDLE hci_handle, uint8_t source_gate_id,
     if (nfa_hci_cb.inactive_host[xx] == dest_host) break;
 
   if (xx != NFA_HCI_MAX_HOST_IN_NETWORK) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Host not active:0x%02x", dest_host);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Host not active:0x%02x", __func__, dest_host);
     return (NFA_STATUS_FAILED);
   }
 
@@ -427,20 +442,18 @@ tNFA_STATUS NFA_HciOpenPipe(tNFA_HANDLE hci_handle, uint8_t pipe) {
   tNFA_HCI_API_OPEN_PIPE_EVT* p_msg;
 
   if ((NFA_HANDLE_GROUP_MASK & hci_handle) != NFA_HANDLE_GROUP_HCI) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid hci_handle:0x%04x", hci_handle);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciOpenPipe (): Invalid hci_handle:0x%04x", hci_handle);
     return (NFA_STATUS_FAILED);
   }
 
   if ((pipe < NFA_HCI_FIRST_DYNAMIC_PIPE) ||
       (pipe > NFA_HCI_LAST_DYNAMIC_PIPE)) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid Pipe:0x%02x", pipe);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciOpenPipe (): Invalid Pipe:0x%02x", pipe);
     return (NFA_STATUS_FAILED);
   }
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("hci_handle:0x%04x, pipe:0x%02X", hci_handle, pipe);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciOpenPipe (): hci_handle:0x%04x, pipe:0x%02X",
+                 hci_handle, pipe);
 
   /* Request HCI to open a pipe if it is in closed state */
   if ((nfa_hci_cb.hci_state != NFA_HCI_STATE_DISABLED) &&
@@ -478,19 +491,18 @@ tNFA_STATUS NFA_HciGetRegistry(tNFA_HANDLE hci_handle, uint8_t pipe,
   tNFA_HCI_API_GET_REGISTRY* p_msg;
 
   if ((NFA_HANDLE_GROUP_MASK & hci_handle) != NFA_HANDLE_GROUP_HCI) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid hci_handle:0x%04x", hci_handle);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciGetRegistry (): Invalid hci_handle:0x%04x",
+                   hci_handle);
     return (NFA_STATUS_FAILED);
   }
 
   if (pipe < NFA_HCI_FIRST_DYNAMIC_PIPE) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid Pipe:0x%02x", pipe);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciGetRegistry (): Invalid Pipe:0x%02x", pipe);
     return (NFA_STATUS_FAILED);
   }
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("hci_handle:0x%04x  Pipe: 0x%02x", hci_handle, pipe);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciGetRegistry (): hci_handle:0x%04x  Pipe: 0x%02x",
+                 hci_handle, pipe);
 
   /* Request HCI to get list of gates supported by the specified host */
   if ((nfa_hci_cb.hci_state != NFA_HCI_STATE_DISABLED) &&
@@ -501,6 +513,66 @@ tNFA_STATUS NFA_HciGetRegistry(tNFA_HANDLE hci_handle, uint8_t pipe,
     p_msg->pipe = pipe;
     p_msg->reg_inx = reg_inx;
 
+    nfa_sys_sendmsg(p_msg);
+    return (NFA_STATUS_OK);
+  }
+
+  return (NFA_STATUS_FAILED);
+}
+
+/*******************************************************************************
+ **
+** Function         NFA_HciSetRegistry
+**
+** Description      This function requests a peer host to set the desired
+**                  registry field value for the gate that the pipe is on.
+**
+**                  When the peer host responds,the app is notified with
+**                  NFA_HCI_SET_REG_RSP_EVT or
+**                  if an error occurs in sending the command the app will be
+**                  notified by NFA_HCI_CMD_SENT_EVT
+**
+** Returns          NFA_STATUS_OK if successfully initiated
+**                  NFA_STATUS_FAILED otherwise
+**
+*******************************************************************************/
+extern tNFA_STATUS NFA_HciSetRegistry(tNFA_HANDLE hci_handle, uint8_t pipe,
+                                      uint8_t reg_inx, uint8_t data_size,
+                                      uint8_t* p_data) {
+  tNFA_HCI_API_SET_REGISTRY* p_msg;
+
+  if ((NFA_HANDLE_GROUP_MASK & hci_handle) != NFA_HANDLE_GROUP_HCI) {
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciSetRegistry (): Invalid hci_handle:0x%04x",
+                   hci_handle);
+    return (NFA_STATUS_FAILED);
+  }
+
+  if (pipe < NFA_HCI_FIRST_DYNAMIC_PIPE) {
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciSetRegistry (): Invalid Pipe:0x%02x", pipe);
+    return (NFA_STATUS_FAILED);
+  }
+
+  if ((data_size == 0) || (p_data == NULL) ||
+      (data_size > NFA_MAX_HCI_CMD_LEN)) {
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciSetRegistry (): Invalid data size:0x%02x",
+                   data_size);
+    return (NFA_STATUS_FAILED);
+  }
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciSetRegistry (): hci_handle:0x%04x  Pipe: 0x%02x",
+                 hci_handle, pipe);
+
+  /* Request HCI to get list of gates supported by the specified host */
+  if ((nfa_hci_cb.hci_state != NFA_HCI_STATE_DISABLED) &&
+      ((p_msg = (tNFA_HCI_API_SET_REGISTRY*)GKI_getbuf(
+            sizeof(tNFA_HCI_API_SET_REGISTRY))) != NULL)) {
+    p_msg->hdr.event = NFA_HCI_API_SET_REGISTRY_EVT;
+    p_msg->hci_handle = hci_handle;
+    p_msg->pipe = pipe;
+    p_msg->reg_inx = reg_inx;
+    p_msg->size = data_size;
+
+    memcpy(p_msg->data, p_data, data_size);
     nfa_sys_sendmsg(p_msg);
     return (NFA_STATUS_OK);
   }
@@ -529,26 +601,24 @@ tNFA_STATUS NFA_HciSendCommand(tNFA_HANDLE hci_handle, uint8_t pipe,
   tNFA_HCI_API_SEND_CMD_EVT* p_msg;
 
   if ((NFA_HANDLE_GROUP_MASK & hci_handle) != NFA_HANDLE_GROUP_HCI) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid hci_handle:0x%04x", hci_handle);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciSendCommand (): Invalid hci_handle:0x%04x",
+                   hci_handle);
     return (NFA_STATUS_FAILED);
   }
 
   if (pipe < NFA_HCI_FIRST_DYNAMIC_PIPE) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid Pipe:0x%02x", pipe);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciSendCommand (): Invalid Pipe:0x%02x", pipe);
     return (NFA_STATUS_FAILED);
   }
 
   if ((cmd_size && (p_data == NULL)) || (cmd_size > NFA_MAX_HCI_CMD_LEN)) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid cmd size:0x%02x", cmd_size);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciSendCommand (): Invalid cmd size:0x%02x", cmd_size);
     return (NFA_STATUS_FAILED);
   }
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("hci_handle:0x%04x, pipe:0x%02x  Code: 0x%02x",
-                      hci_handle, pipe, cmd_code);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+      "NFA_HciSendCommand (): hci_handle:0x%04x, pipe:0x%02x  Code: 0x%02x",
+      hci_handle, pipe, cmd_code);
 
   /* Request HCI to post event data on a particular pipe */
   if ((nfa_hci_cb.hci_state != NFA_HCI_STATE_DISABLED) &&
@@ -603,34 +673,38 @@ tNFA_STATUS NFA_HciSendCommand(tNFA_HANDLE hci_handle, uint8_t pipe,
 tNFA_STATUS NFA_HciSendEvent(tNFA_HANDLE hci_handle, uint8_t pipe,
                              uint8_t evt_code, uint16_t evt_size,
                              uint8_t* p_data, uint16_t rsp_size,
-                             uint8_t* p_rsp_buf, uint16_t rsp_timeout) {
+                             uint8_t* p_rsp_buf,
+#if (NXP_EXTNS == TRUE)
+                             uint32_t rsp_timeout)
+#else
+                             uint16_t rsp_timeout)
+#endif
+{
   tNFA_HCI_API_SEND_EVENT_EVT* p_msg;
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("hci_handle:0x%04x, pipe:0x%02x  Code: 0x%02x",
-                      hci_handle, pipe, evt_code);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+      "NFA_HciSendEvent(): hci_handle:0x%04x, pipe:0x%02x  Code: 0x%02x",
+      hci_handle, pipe, evt_code);
 
   if ((NFA_HANDLE_GROUP_MASK & hci_handle) != NFA_HANDLE_GROUP_HCI) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid hci_handle:0x%04x", hci_handle);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciSendEvent (): Invalid hci_handle:0x%04x",
+                   hci_handle);
     return (NFA_STATUS_FAILED);
   }
 
   if (pipe < NFA_HCI_FIRST_DYNAMIC_PIPE) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid Pipe:0x%02x", pipe);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciSendEvent (): Invalid Pipe:0x%02x", pipe);
     return (NFA_STATUS_FAILED);
   }
 
   if (evt_size && (p_data == NULL)) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid Event size:0x%02x", evt_size);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciSendEvent (): Invalid Event size:0x%02x", evt_size);
     return (NFA_STATUS_FAILED);
   }
 
   if (rsp_size && (p_rsp_buf == NULL)) {
     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-        "No Event buffer, but invalid event buffer size "
+        "NFA_HciSendEvent (): No Event buffer, but invalid event buffer size "
         ":%u",
         rsp_size);
     return (NFA_STATUS_FAILED);
@@ -673,19 +747,18 @@ tNFA_STATUS NFA_HciSendEvent(tNFA_HANDLE hci_handle, uint8_t pipe,
 tNFA_STATUS NFA_HciClosePipe(tNFA_HANDLE hci_handle, uint8_t pipe) {
   tNFA_HCI_API_CLOSE_PIPE_EVT* p_msg;
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("hci_handle:0x%04x, pipe:0x%02X", hci_handle, pipe);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciClosePipe (): hci_handle:0x%04x, pipe:0x%02X",
+                 hci_handle, pipe);
 
   if ((NFA_HANDLE_GROUP_MASK & hci_handle) != NFA_HANDLE_GROUP_HCI) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid hci_handle:0x%04x", hci_handle);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciClosePipe (): Invalid hci_handle:0x%04x",
+                   hci_handle);
     return (NFA_STATUS_FAILED);
   }
 
   if ((pipe < NFA_HCI_FIRST_DYNAMIC_PIPE) ||
       (pipe > NFA_HCI_LAST_DYNAMIC_PIPE)) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid Pipe:0x%02x", pipe);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciClosePipe (): Invalid Pipe:0x%02x", pipe);
     return (NFA_STATUS_FAILED);
   }
 
@@ -724,20 +797,19 @@ tNFA_STATUS NFA_HciDeletePipe(tNFA_HANDLE hci_handle, uint8_t pipe) {
   tNFA_HCI_API_DELETE_PIPE_EVT* p_msg;
 
   if ((NFA_HANDLE_GROUP_MASK & hci_handle) != NFA_HANDLE_GROUP_HCI) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid hci_handle:0x%04x", hci_handle);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciDeletePipe (): Invalid hci_handle:0x%04x",
+                   hci_handle);
     return (NFA_STATUS_FAILED);
   }
 
   if ((pipe < NFA_HCI_FIRST_DYNAMIC_PIPE) ||
       (pipe > NFA_HCI_LAST_DYNAMIC_PIPE)) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid Pipe:0x%02x", pipe);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciDeletePipe (): Invalid Pipe:0x%02x", pipe);
     return (NFA_STATUS_FAILED);
   }
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("hci_handle:0x%04x, pipe:0x%02X", hci_handle, pipe);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciDeletePipe (): hci_handle:0x%04x, pipe:0x%02X",
+                 hci_handle, pipe);
 
   /* Request HCI to delete a pipe created by the application identified by hci
    * handle */
@@ -774,8 +846,8 @@ tNFA_STATUS NFA_HciAddStaticPipe(tNFA_HANDLE hci_handle, uint8_t host,
   uint8_t xx;
 
   if ((NFA_HANDLE_GROUP_MASK & hci_handle) != NFA_HANDLE_GROUP_HCI) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid hci_handle:0x%04x", hci_handle);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciAddStaticPipe (): Invalid hci_handle:0x%04x",
+                   hci_handle);
     return (NFA_STATUS_FAILED);
   }
 
@@ -783,25 +855,27 @@ tNFA_STATUS NFA_HciAddStaticPipe(tNFA_HANDLE hci_handle, uint8_t host,
     if (nfa_hci_cb.inactive_host[xx] == host) break;
 
   if (xx != NFA_HCI_MAX_HOST_IN_NETWORK) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Host not active:0x%02x", host);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciAddStaticPipe (): Host not active:0x%02x", host);
     return (NFA_STATUS_FAILED);
   }
 
-  if (gate <= NFA_HCI_LAST_HOST_SPECIFIC_GATE) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid Gate:0x%02x", gate);
+  if ((gate <= NFA_HCI_LAST_HOST_SPECIFIC_GATE)
+#if (NXP_EXTNS == TRUE)
+      && ((nfcFL.nfccFL._UICC_CREATE_CONNECTIVITY_PIPE) &&
+              (gate != NFA_HCI_CONNECTIVITY_GATE))
+#endif
+          ) {
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciAddStaticPipe (): Invalid Gate:0x%02x", gate);
     return (NFA_STATUS_FAILED);
   }
-
+#if (NXP_EXTNS != TRUE)
   if (pipe <= NFA_HCI_LAST_DYNAMIC_PIPE) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Invalid Pipe:0x%02x", pipe);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciAddStaticPipe (): Invalid Pipe:0x%02x", pipe);
     return (NFA_STATUS_FAILED);
   }
-
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("hci_handle:0x%04x, pipe:0x%02X", hci_handle, pipe);
+#endif
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciAddStaticPipe (): hci_handle:0x%04x, pipe:0x%02X",
+                 hci_handle, pipe);
 
   /* Request HCI to delete a pipe created by the application identified by hci
    * handle */
@@ -837,18 +911,15 @@ void NFA_HciDebug(uint8_t action, uint8_t size, uint8_t* p_data) {
 
   switch (action) {
     case NFA_HCI_DEBUG_DISPLAY_CB:
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("NFA_HciDebug  Host List:");
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciDebug  Host List:");
       for (xx = 0; xx < NFA_HCI_MAX_APP_CB; xx++) {
         if (nfa_hci_cb.cfg.reg_app_names[xx][0] != 0) {
-          DLOG_IF(INFO, nfc_debug_enabled)
-              << StringPrintf("              Host Inx:  %u   Name: %s", xx,
-                              &nfa_hci_cb.cfg.reg_app_names[xx][0]);
+          DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("              Host Inx:  %u   Name: %s", xx,
+                         &nfa_hci_cb.cfg.reg_app_names[xx][0]);
         }
       }
 
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("NFA_HciDebug  Gate List:");
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciDebug  Gate List:");
       for (xx = 0; xx < NFA_HCI_MAX_GATE_CB; xx++, pg++) {
         if (pg->gate_id != 0) {
           DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
@@ -858,13 +929,11 @@ void NFA_HciDebug(uint8_t action, uint8_t size, uint8_t* p_data) {
         }
       }
 
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("NFA_HciDebug  Pipe List:");
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciDebug  Pipe List:");
       for (xx = 0; xx < NFA_HCI_MAX_PIPE_CB; xx++, pp++) {
         if (pp->pipe_id != 0) {
           DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-              "              Pipe Inx: %x  ID: 0x%02x  State: %u  "
-              "LocalGate: "
+              "              Pipe Inx: %x  ID: 0x%02x  State: %u  LocalGate: "
               "0x%02x  Dest Gate: 0x%02x  Host: 0x%02x",
               xx, pp->pipe_id, pp->pipe_state, pp->local_gate, pp->dest_gate,
               pp->dest_host);
@@ -888,15 +957,119 @@ void NFA_HciDebug(uint8_t action, uint8_t size, uint8_t* p_data) {
       break;
 
     case NFA_HCI_DEBUG_ENABLE_LOOPBACK:
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("NFA_HciDebug  HCI_LOOPBACK_DEBUG = TRUE");
-      HCI_LOOPBACK_DEBUG = NFA_HCI_DEBUG_ON;
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciDebug  HCI_LOOPBACK_DEBUG = true");
+      HCI_LOOPBACK_DEBUG = true;
       break;
 
     case NFA_HCI_DEBUG_DISABLE_LOOPBACK:
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("NFA_HciDebug  HCI_LOOPBACK_DEBUG = FALSE");
-      HCI_LOOPBACK_DEBUG = NFA_HCI_DEBUG_OFF;
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciDebug  HCI_LOOPBACK_DEBUG = false");
+      HCI_LOOPBACK_DEBUG = false;
       break;
   }
 }
+#if (NXP_EXTNS == TRUE)
+/*******************************************************************************
+**
+** Function         NFA_MW_Fwdnlwd_Recovery
+**
+** Description      This function is called to make the MW_RCVRY_FW_DNLD_ALLOWED
+*true
+**                  not allowing the FW download while MW recovery.
+**
+** Returns          None
+**
+*******************************************************************************/
+bool NFA_MW_Fwdnlwd_Recovery(bool mw_fwdnld_recovery) {
+    if(!nfcFL.nfccFL._NFCC_MW_RCVRY_BLK_FW_DNLD) {
+        DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_MW_Fwdnlwd_Recovery "
+                                "NFCC_MW_RCVRY_BLK_FW_DNLD not available. Returning");
+        return false;
+    }
+    if (mw_fwdnld_recovery) {
+        MW_RCVRY_FW_DNLD_ALLOWED = true;
+    } else {
+        MW_RCVRY_FW_DNLD_ALLOWED = false;
+    }
+    return mw_fwdnld_recovery;
+}
+
+/*******************************************************************************
+**
+** Function         NFA_HciW4eSETransaction_Complete
+**
+** Description      This function is called to wait for eSE transaction
+**                  to complete before NFCC shutdown or NFC service turn OFF
+**
+** Returns          None
+**
+*******************************************************************************/
+void NFA_HciW4eSETransaction_Complete(tNFA_HCI_TRANSCV_STATE type) {
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciW4eSETransaction_Complete; type=%u", type);
+  uint8_t retry_cnt = 0;
+  uint8_t max_time = NFA_HCI_MAX_RSP_WAIT_TIME;
+
+  if (type == Release) {
+    nfa_hci_release_transcieve();
+  } else {
+    do {
+      if (nfa_hci_cb.hci_state == NFA_HCI_STATE_WAIT_RSP) {
+        sleep(1);
+      } else
+        break;
+    } while (retry_cnt++ < max_time);
+  }
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciW4eSETransaction_Complete; End");
+}
+
+/*******************************************************************************
+**
+** Function         NFA_HciConfigureNfceeETSI12
+**
+** Description      This function is called to configure individual NFCEE to
+**                  according HCI ETSI12 standard.
+**
+**                  When the peer host responds,the app is notified with
+**                  NFA_HCI_RSP_RCVD_EVT
+**
+** Returns          NFA_STATUS_OK if successfully initiated
+**                  NFA_STATUS_FAILED otherwise
+**
+*******************************************************************************/
+tNFA_STATUS NFA_HciConfigureNfceeETSI12() {
+  tNFA_HCI_API_CONFIGURE_EVT* p_msg;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciConfigureNfceeETSI12 (): Entry");
+
+  /* Request HCI to post event data on a Admin pipe */
+  /* Register the application with HCI */
+  if ((nfa_hci_cb.hci_state != NFA_HCI_STATE_DISABLED) &&
+      (nfa_hci_cb.host_count != 0) &&
+      ((p_msg = (tNFA_HCI_API_CONFIGURE_EVT*)GKI_getbuf(
+            sizeof(tNFA_HCI_API_CONFIGURE_EVT))) != NULL)) {
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_HciConfigureNfceeETSI12 (): Entry HCI state - %d",
+                   nfa_hci_cb.hci_state);
+    p_msg->hdr.event = NFA_HCI_API_CONFIGURE_EVT;
+    p_msg->config_nfcee_event = NFA_HCI_INIT_NFCEE_CONFIG;
+    nfa_sys_sendmsg(p_msg);
+    return (NFA_STATUS_OK);
+  }
+
+  return (NFA_STATUS_FAILED);
+}
+/*******************************************************************************
+**
+** Function         NFA_IsPipeStatusNotCorrect
+**
+** Description      Checks and resets pipe status
+**
+** Returns          TRUE/FALSE
+**
+*******************************************************************************/
+bool NFA_IsPipeStatusNotCorrect()
+{
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_IsPipeStatusNotCorrect (): pipe status not correct: %d", nfa_hci_cb.IsApduPipeStatusNotCorrect);
+  bool status;
+  status = nfa_hci_cb.IsApduPipeStatusNotCorrect;
+  nfa_hci_cb.IsApduPipeStatusNotCorrect = false;
+  return status;
+}
+#endif

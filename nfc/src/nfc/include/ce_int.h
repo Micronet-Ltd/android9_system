@@ -28,7 +28,7 @@
 
 #include "ce_api.h"
 
-#if (CE_TEST_INCLUDED == FALSE)
+#if (CE_TEST_INCLUDED == false)
 #define CE_MIN_SUP_PROTO NCI_PROTOCOL_FELICA
 #define CE_MAX_SUP_PROTO NCI_PROTOCOL_ISO4
 #else
@@ -150,7 +150,6 @@ typedef struct {
 /*****************************************************************************
 **  EXTERNAL FUNCTION DECLARATIONS
 *****************************************************************************/
-
 /* Global NFC data */
 extern tCE_CB ce_cb;
 
@@ -164,5 +163,6 @@ tNFC_STATUS ce_select_t3t(uint16_t system_code,
 /* ce_t4t internal functions */
 extern tNFC_STATUS ce_select_t4t(void);
 extern void ce_t4t_process_timeout(TIMER_LIST_ENT* p_tle);
+
 
 #endif /* CE_INT_H_ */

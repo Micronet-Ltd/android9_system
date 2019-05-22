@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 /******************************************************************************
  *
@@ -22,10 +41,8 @@
  *
  ******************************************************************************/
 #include <string.h>
-
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
-
 #include "nfa_api.h"
 #include "nfa_ce_int.h"
 
@@ -51,7 +68,11 @@ tNFA_STATUS nfa_ce_api_deregister_listen(tNFA_HANDLE handle,
   tNFA_CE_MSG* p_ce_msg;
 
   /* Validate handle */
-  if ((listen_info != NFA_CE_LISTEN_INFO_UICC) &&
+  if ((listen_info != NFA_CE_LISTEN_INFO_UICC
+#if (NXP_EXTNS == TRUE)
+       && listen_info != NFA_CE_LISTEN_INFO_ESE
+#endif
+       ) &&
       ((handle & NFA_HANDLE_GROUP_MASK) != NFA_HANDLE_GROUP_CE)) {
     LOG(ERROR) << StringPrintf("nfa_ce_api_reregister_listen: Invalid handle");
     return (NFA_STATUS_BAD_HANDLE);
@@ -131,8 +152,7 @@ tNFA_STATUS NFA_CeConfigureLocalTag(tNFA_PROTOCOL_MASK protocol_mask,
     /* If any protocols are specified, then NDEF buffer pointer must be non-NULL
      */
     if (p_ndef_data == NULL) {
-      LOG(ERROR) << StringPrintf(
-          "NFA_CeConfigureLocalTag: NULL ndef data pointer");
+      LOG(ERROR) << StringPrintf("NFA_CeConfigureLocalTag: NULL ndef data pointer");
       return (NFA_STATUS_INVALID_PARAM);
     }
 
@@ -199,11 +219,12 @@ tNFA_STATUS NFA_CeConfigureLocalTag(tNFA_PROTOCOL_MASK protocol_mask,
 *******************************************************************************/
 tNFA_STATUS NFA_CeConfigureUiccListenTech(tNFA_HANDLE ee_handle,
                                           tNFA_TECHNOLOGY_MASK tech_mask) {
-#if (NFC_NFCEE_INCLUDED == TRUE)
+#if (NFC_NFCEE_INCLUDED == true)
   tNFA_CE_MSG* p_msg;
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("ee_handle = 0x%x", ee_handle);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+      "NFA_CeConfigureUiccListenTech () ee_handle = 0x%x tech_mask = 0x%x",
+      ee_handle, tech_mask);
 
   /* If tech_mask is zero, then app is disabling listening for specified uicc */
   if (tech_mask == 0) {
@@ -226,11 +247,73 @@ tNFA_STATUS NFA_CeConfigureUiccListenTech(tNFA_HANDLE ee_handle,
   }
 #else
   LOG(ERROR) << StringPrintf(
-      "NFCEE related functions are not "
+      "NFA_CeConfigureUiccListenTech () NFCEE related functions are not "
       "enabled!");
 #endif
   return (NFA_STATUS_FAILED);
 }
+
+#if (NXP_EXTNS == TRUE)
+/*******************************************************************************
+**
+** Function         NFA_CeConfigureEseListenTech
+**
+** Description      Configure listening for the Ese, using the specified
+**                  technologies.
+**
+**                  Events will be notifed using the tNFA_CONN_CBACK
+**                  (registered during NFA_Enable)
+**
+**                  The NFA_CE_ESE_LISTEN_CONFIGURED_EVT reports the status of
+*the
+**                  operation.
+**
+**                  Activation and deactivation are reported using the
+**                  NFA_ACTIVATED_EVT and NFA_DEACTIVATED_EVT events
+**
+** Note:            If RF discovery is started,
+*NFA_StopRfDiscovery()/NFA_RF_DISCOVERY_STOPPED_EVT
+**                  should happen before calling this function
+**
+** Returns:
+**                  NFA_STATUS_OK, if command accepted
+**                  NFA_STATUS_FAILED: otherwise
+**
+*******************************************************************************/
+tNFA_STATUS NFA_CeConfigureEseListenTech(tNFA_HANDLE ee_handle,
+                                         tNFA_TECHNOLOGY_MASK tech_mask) {
+#if (NFC_NFCEE_INCLUDED == true)
+  tNFA_CE_MSG* p_msg;
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_CeConfigureEseListenTech () ee_handle = 0x%x", ee_handle);
+
+  /* If tech_mask is zero, then app is disabling listening for specified uicc */
+  if (tech_mask == 0) {
+    return (nfa_ce_api_deregister_listen(ee_handle, NFA_CE_LISTEN_INFO_ESE));
+  }
+
+  /* Otherwise then app is configuring ese listen for the specificed
+   * technologies */
+  if ((p_msg = (tNFA_CE_MSG*)GKI_getbuf((uint16_t)sizeof(tNFA_CE_MSG))) !=
+      NULL) {
+    p_msg->reg_listen.hdr.event = NFA_CE_API_REG_LISTEN_EVT;
+    p_msg->reg_listen.listen_type = NFA_CE_REG_TYPE_ESE;
+
+    p_msg->reg_listen.ee_handle = ee_handle;
+    p_msg->reg_listen.tech_mask = tech_mask;
+
+    nfa_sys_sendmsg(p_msg);
+
+    return (NFA_STATUS_OK);
+  }
+#else
+  LOG(ERROR) << StringPrintf(
+      "NFA_CeConfigureEseListenTech () NFCEE related functions are not "
+      "enabled!");
+#endif
+  return (NFA_STATUS_FAILED);
+}
+#endif
 
 /*******************************************************************************
 **
@@ -301,7 +384,8 @@ tNFA_STATUS NFA_CeRegisterFelicaSystemCodeOnDH(uint16_t system_code,
 **
 *******************************************************************************/
 tNFA_STATUS NFA_CeDeregisterFelicaSystemCodeOnDH(tNFA_HANDLE handle) {
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("handle:0x%X", handle);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_CeDeregisterFelicaSystemCodeOnDH (): handle:0x%X",
+                 handle);
   return (nfa_ce_api_deregister_listen(handle, NFA_CE_LISTEN_INFO_FELICA));
 }
 
@@ -333,8 +417,13 @@ tNFA_STATUS NFA_CeRegisterAidOnDH(uint8_t aid[NFC_MAX_AID_LEN], uint8_t aid_len,
 
   DLOG_IF(INFO, nfc_debug_enabled) << __func__;
 
-  /* Validate parameters */
-  if (p_conn_cback == NULL) return (NFA_STATUS_INVALID_PARAM);
+/* Validate parameters */
+#if (NXP_EXTNS == TRUE)
+  if ((p_conn_cback == NULL) || (aid_len > NFC_MAX_AID_LEN))
+#else
+  if (p_conn_cback == NULL)
+#endif
+    return (NFA_STATUS_INVALID_PARAM);
 
   p_msg = (tNFA_CE_MSG*)GKI_getbuf((uint16_t)sizeof(tNFA_CE_MSG));
   if (p_msg != NULL) {
@@ -374,7 +463,7 @@ tNFA_STATUS NFA_CeRegisterAidOnDH(uint8_t aid[NFC_MAX_AID_LEN], uint8_t aid_len,
 **
 *******************************************************************************/
 tNFA_STATUS NFA_CeDeregisterAidOnDH(tNFA_HANDLE handle) {
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("handle:0x%X", handle);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_CeDeregisterAidOnDH (): handle:0x%X", handle);
   return (nfa_ce_api_deregister_listen(handle, NFA_CE_LISTEN_INFO_T4T_AID));
 }
 
@@ -409,10 +498,9 @@ tNFA_STATUS NFA_CeSetIsoDepListenTech(tNFA_TECHNOLOGY_MASK tech_mask) {
   tNFA_TECHNOLOGY_MASK use_mask =
       (NFA_TECHNOLOGY_MASK_A | NFA_TECHNOLOGY_MASK_B);
 
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("0x%x", tech_mask);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_CeSetIsoDepListenTech (): 0x%x", tech_mask);
   if (((tech_mask & use_mask) == 0) || ((tech_mask & ~use_mask) != 0)) {
-    LOG(ERROR) << StringPrintf(
-        "NFA_CeSetIsoDepListenTech: Invalid technology mask");
+    LOG(ERROR) << StringPrintf("NFA_CeSetIsoDepListenTech: Invalid technology mask");
     return (NFA_STATUS_INVALID_PARAM);
   }
 

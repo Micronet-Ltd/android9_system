@@ -26,15 +26,15 @@
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
 
+#include "gki.h"
 #include "nfc_target.h"
 
-#include "gki.h"
-#include "nci_hmsgs.h"
 #include "nfc_api.h"
 #include "nfc_int.h"
+#include "nci_hmsgs.h"
+#include "nfa_ee_int.h"
 
 using android::base::StringPrintf;
-
 /*******************************************************************************
 **
 ** Function         NFC_NfceeDiscover
@@ -51,6 +51,10 @@ using android::base::StringPrintf;
 **
 *******************************************************************************/
 tNFC_STATUS NFC_NfceeDiscover(bool discover) {
+  if(nfc_cb.flags & NFC_FL_WAIT_MODE_SET_NTF) {
+    LOG(ERROR) << StringPrintf("mode set ntf pending ,not allowing nfcee_discover %d", discover);
+    return NFC_STATUS_FAILED;
+  }
   return nci_snd_nfcee_discover((uint8_t)(
       discover ? NCI_DISCOVER_ACTION_ENABLE : NCI_DISCOVER_ACTION_DISABLE));
 }
@@ -73,24 +77,29 @@ tNFC_STATUS NFC_NfceeDiscover(bool discover) {
 *******************************************************************************/
 tNFC_STATUS NFC_NfceeModeSet(uint8_t nfcee_id, tNFC_NFCEE_MODE mode) {
   tNFC_STATUS status = NCI_STATUS_OK;
-  if (mode >= NCI_NUM_NFCEE_MODE || nfcee_id == NCI_DH_ID) {
-    LOG(ERROR) << StringPrintf("%s invalid parameter:%d", __func__, mode);
+  if (mode >= NCI_NUM_NFCEE_MODE|| nfcee_id == 0x00) {
+    LOG(ERROR) << StringPrintf("NFC_NfceeModeSet bad mode:%d", mode);
     return NFC_STATUS_FAILED;
   }
-  if (nfc_cb.nci_version != NCI_VERSION_2_0)
-    status = nci_snd_nfcee_mode_set(nfcee_id, mode);
-  else {
+  /* PN553 and PN80T supports proprierty mode set notifications */
+  if ((nfc_cb.nci_version != NCI_VERSION_2_0) &&
+      ((nfcFL.chipType != pn553) || (nfcFL.chipType != pn80T))) {
+    status = nci_snd_nfcee_mode_set (nfcee_id, mode);
+  } else {
     if (nfc_cb.flags & NFC_FL_WAIT_MODE_SET_NTF)
       status = NFC_STATUS_REFUSED;
     else {
-      status = nci_snd_nfcee_mode_set(nfcee_id, mode);
-      if (status == NCI_STATUS_OK) {
+      nfa_ee_cb.nfcee_id = nfcee_id;
+      nfa_ee_cb.mode = mode;
+      status = nci_snd_nfcee_mode_set (nfcee_id, mode);
+      if (status == NCI_STATUS_OK)
+      {
         /* Mode set command is successfully queued or sent.
          * do not allow another Mode Set command until NTF is received */
-        nfc_cb.flags |= NFC_FL_WAIT_MODE_SET_NTF;
-        nfc_start_timer(&nfc_cb.nci_mode_set_ntf_timer,
-                        (uint16_t)(NFC_TTYPE_WAIT_MODE_SET_NTF),
-                        NFC_MODE_SET_NTF_TIMEOUT);
+         nfc_cb.flags       |= NFC_FL_WAIT_MODE_SET_NTF;
+         nfc_start_timer(&nfc_cb.nci_setmode_ntf_timer,
+           (uint16_t)(NFC_TTYPE_WAIT_SETMODE_NTF),
+             NFC_SETMODE_NTF_TIMEOUT);
       }
     }
   }
@@ -129,28 +138,27 @@ tNFC_STATUS NFC_SetRouting(bool more, uint8_t num_tlv, uint8_t tlv_size,
 tNFC_STATUS NFC_GetRouting(void) { return nci_snd_get_routing_cmd(); }
 
 /*******************************************************************************
-**
++**
 ** Function         NFC_NfceePLConfig
 **
 ** Description      This function is called to set the Power and Link Control to
-**                  an NFCEE connected to the NFCC.
+*                  an NFCEE connected to the NFCC.
 **                  The response from NFCC is reported by tNFC_RESPONSE_CBACK
 **                  as NFC_NFCEE_PL_CONTROL_REVT.
 **
 ** Parameters       nfcee_id - the NFCEE to activate or de-activate.
 **                  pl_config -
-**                   NFCEE_PL_CONFIG_NFCC_DECIDES  NFCC decides (default)
-**                   NFCEE_PL_CONFIG_PWR_ALWAYS_ON  NFCEE power supply is
-**                                                          always on
-**                   NFCEE_PL_CONFIG_LNK_ON_WHEN_PWR_ON  communication link is
-**                                       always active when NFCEE is powered on
-**                   NFCEE_PL_CONFIG_PWR_LNK_ALWAYS_ON  power supply and
-**                                       communication link are always on
+**                     NFCEE_PL_CONFIG_NFCC_DECIDES    NFCC decides (default)
+**                     NFCEE_PL_CONFIG_P_ALWAYS_ON     NFCEE power supply is always on
+**                     NFCEE_PL_CONFIG_L_ON_WHEN_P_ON  communication link is always active
+**                                                          when NFCEE is powered on
+**                     NFCEE_PL_CONFIG_PL_ALWAYS_ON    power supply and communication link are always on
 **
 ** Returns          tNFC_STATUS
 **
 *******************************************************************************/
-tNFC_STATUS NFC_NfceePLConfig(uint8_t nfcee_id,
-                              tNCI_NFCEE_PL_CONFIG pl_config) {
-  return nci_snd_nfcee_power_link_control(nfcee_id, pl_config);
+tNFC_STATUS NFC_NfceePLConfig (uint8_t                 nfcee_id,
+                              tNCI_NFCEE_PL_CONFIG  pl_config)
+{
+    return nci_snd_nfcee_power_link_control (nfcee_id, pl_config);
 }

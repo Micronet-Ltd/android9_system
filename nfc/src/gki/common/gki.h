@@ -23,11 +23,10 @@
 #endif
 
 #ifndef NFC_STANDALONE
-#define NFC_STANDALONE FALSE
+#define NFC_STANDALONE false
 #endif
 
 #include <string>
-
 #include "bt_types.h"
 #include "gki_target.h"
 
@@ -70,8 +69,8 @@
 #define TIMER_3_EVT_MASK 0x0080
 
 #define APPL_EVT_0 8
+#define APPL_EVT_6 14
 #define APPL_EVT_7 15
-
 #define EVENT_MASK(evt) ((uint16_t)(0x0001 << (evt)))
 
 /************************************************************************
@@ -288,6 +287,9 @@
 
 #endif /* GKI_NUM_FIXED_BUF_POOLS < 16 */
 
+#ifndef GKI_UNKNOWN_TASK_EVT
+#define GKI_UNKNOWN_TASK_EVT APPL_EVT_6
+#endif
 #ifndef GKI_SHUTDOWN_EVT
 #define GKI_SHUTDOWN_EVT APPL_EVT_7
 #endif
