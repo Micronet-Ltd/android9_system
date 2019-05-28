@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 /******************************************************************************
  *
@@ -24,10 +43,10 @@
 #ifndef NFA_CE_INT_H
 #define NFA_CE_INT_H
 
+#include "nfa_sys.h"
 #include "nfa_api.h"
 #include "nfa_ce_api.h"
 #include "nfa_dm_int.h"
-#include "nfa_sys.h"
 #include "nfc_api.h"
 
 /*****************************************************************************
@@ -43,11 +62,18 @@ enum {
   NFA_CE_API_CFG_ISODEP_TECH_EVT,
   NFA_CE_ACTIVATE_NTF_EVT,
   NFA_CE_DEACTIVATE_NTF_EVT
-
 };
 
 /* Listen registration types */
-enum { NFA_CE_REG_TYPE_ISO_DEP, NFA_CE_REG_TYPE_FELICA, NFA_CE_REG_TYPE_UICC };
+enum {
+  NFA_CE_REG_TYPE_ISO_DEP,
+  NFA_CE_REG_TYPE_FELICA,
+  NFA_CE_REG_TYPE_UICC
+#if (NXP_EXTNS == TRUE)
+  ,
+  NFA_CE_REG_TYPE_ESE
+#endif
+};
 typedef uint8_t tNFA_CE_REG_TYPE;
 
 /* data type for NFA_CE_API_CFG_LOCAL_TAG_EVT */
@@ -128,8 +154,12 @@ typedef union {
 #define NFA_CE_LISTEN_INFO_FELICA 0x00000200
 /* This is a listen_info for UICC                                   */
 #define NFA_CE_LISTEN_INFO_UICC 0x00000400
-/* App has not been notified of ACTIVATE_EVT yet for this HCEF NFCID2 */
-#define NFA_CE_LISTEN_INFO_T3T_ACTIVATE_PND 0x00010000
+#if (NXP_EXTNS == TRUE)
+#define NFA_CE_LISTEN_INFO_ESE 0x00008000 /* This is a listen_info for ESE */
+#define NFA_CE_LISTEN_INFO_T3T_ACTIVATE_PND                                 \
+  0x00010000 /* App has not been notified of ACTIVATE_EVT yet for this HCEF \
+                NFCID2 */
+#endif
 
 /* Structure for listen look up table */
 typedef struct {

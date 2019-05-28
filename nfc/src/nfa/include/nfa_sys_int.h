@@ -25,6 +25,7 @@
 #define NFA_SYS_INT_H
 
 #include "nfa_sys_ptim.h"
+#include "nfa_sys.h"
 
 /*****************************************************************************
 **  Constants and data types
@@ -51,8 +52,8 @@ typedef struct {
   uint16_t proc_nfcc_pwr_mode_cplt_flags;
   uint16_t proc_nfcc_pwr_mode_cplt_mask;
 
-  bool graceful_disable; /* TRUE if NFA_Disable () is called with TRUE */
-  bool timers_disabled;  /* TRUE if sys timers disabled */
+  bool graceful_disable; /* true if NFA_Disable () is called with true */
+  bool timers_disabled;  /* true if sys timers disabled */
 } tNFA_SYS_CB;
 
 /*****************************************************************************

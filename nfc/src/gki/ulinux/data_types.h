@@ -18,15 +18,23 @@
 #ifndef DATA_TYPES_H
 #define DATA_TYPES_H
 
-#include <stdbool.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifndef NULL
 #define NULL 0
 #endif
 
+#ifndef false
+#define false 0
+#endif
+
 #ifndef FALSE
 #define FALSE 0
+#endif
+
+#ifndef true
+#define true (!false)
 #endif
 
 #ifndef TRUE
@@ -42,7 +50,7 @@
 #endif
 
 #ifndef BIG_ENDIAN
-#define BIG_ENDIAN FALSE
+#define BIG_ENDIAN false
 #endif
 
 #endif

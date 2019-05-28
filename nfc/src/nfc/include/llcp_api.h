@@ -18,6 +18,26 @@
 
 /******************************************************************************
  *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
+
+/******************************************************************************
+ *
  *  This file contains the LLCP API definitions
  *
  ******************************************************************************/
@@ -25,8 +45,8 @@
 #define LLCP_API_H
 
 #include <string>
-#include "llcp_defs.h"
 #include "nfc_target.h"
+#include "llcp_defs.h"
 
 /*****************************************************************************
 **  Constants
@@ -51,7 +71,7 @@ typedef uint8_t tLLCP_STATUS;
 **  Type Definitions
 *****************************************************************************/
 typedef struct {
-  bool is_initiator;        /* TRUE if we are POLL mode */
+  bool is_initiator;        /* true if we are POLL mode */
   uint8_t max_payload_size; /* 64, 128, 192 or 254 */
   uint8_t waiting_time;
   uint8_t* p_gen_bytes;
@@ -97,6 +117,7 @@ typedef struct {
 #define LLCP_LINK_FRAME_ERROR 0x07
 /* RF link loss without any rx LLC PDU      */
 #define LLCP_LINK_RF_LINK_LOSS_NO_RX_LLC 0x08
+
 #define LLCP_LINK_RF_LINK_LOSS_ERR NFC_STATUS_LINK_LOSS
 
 typedef void(tLLCP_LINK_CBACK)(uint8_t event, uint8_t reason);
@@ -170,15 +191,15 @@ typedef struct {
   uint8_t event;      /* LLCP_SAP_EVT_CONGEST         */
   uint8_t local_sap;  /* SAP of local device          */
   uint8_t remote_sap; /* SAP of remote device         */
-  bool is_congested;  /* TRUE if congested            */
+  bool is_congested;  /* true if congested            */
   uint8_t link_type;  /* congested link type          */
 } tLLCP_SAP_CONGEST;
 
 typedef struct {
   uint8_t event;     /* LLCP_SAP_EVT_LINK_STATUS     */
   uint8_t local_sap; /* SAP of local device          */
-  bool is_activated; /* TRUE if LLCP link is activated  */
-  bool is_initiator; /* TRUE if local LLCP is initiator */
+  bool is_activated; /* true if LLCP link is activated  */
+  bool is_initiator; /* true if local LLCP is initiator */
 } tLLCP_SAP_LINK_STATUS;
 
 typedef struct {
@@ -218,7 +239,6 @@ typedef void(tLLCP_DTA_CBACK)(void);
 /*****************************************************************************
 **  External Function Declarations
 *****************************************************************************/
-
 /*******************************************************************************
 **
 ** Function         LLCP_SetConfig
@@ -233,7 +253,7 @@ typedef void(tLLCP_DTA_CBACK)(void);
 **                  - Delay SYMM response
 **                  - Data link connection timeout
 **                  - Delay timeout to send first PDU as initiator
-**
+**                  - Firmware start symmetry
 ** Returns          void
 **
 *******************************************************************************/
@@ -257,7 +277,7 @@ extern void LLCP_SetConfig(uint16_t link_miu, uint8_t opt, uint8_t wt,
 **                  - Delay SYMM response
 **                  - Data link connection timeout
 **                  - Delay timeout to send first PDU as initiator
-**
+**                  - Firmware start symmetry
 ** Returns          void
 **
 *******************************************************************************/
@@ -387,7 +407,7 @@ extern tLLCP_STATUS LLCP_Deregister(uint8_t sap);
 ** Description      Check if logical link is congested
 **
 **
-** Returns          TRUE if congested
+** Returns          true if congested
 **
 *******************************************************************************/
 extern bool LLCP_IsLogicalLinkCongested(uint8_t local_sap,
@@ -421,7 +441,7 @@ extern tLLCP_STATUS LLCP_SendUI(uint8_t ssap, uint8_t dsap, NFC_HDR* p_buf);
 **                  - Information of next UI PDU is not concatenated.
 **                  - Recommended max_data_len is link MIU of local device
 **
-** Returns          TRUE if more information of UI PDU or more UI PDU in queue
+** Returns          true if more information of UI PDU or more UI PDU in queue
 **
 *******************************************************************************/
 extern bool LLCP_ReadLogicalLinkData(uint8_t local_sap, uint32_t max_data_len,
@@ -495,7 +515,7 @@ extern tLLCP_STATUS LLCP_ConnectReject(uint8_t local_sap, uint8_t remote_sap,
 ** Description      Check if data link is congested
 **
 **
-** Returns          TRUE if congested
+** Returns          true if congested
 **
 *******************************************************************************/
 extern bool LLCP_IsDataLinkCongested(uint8_t local_sap, uint8_t remote_sap,
@@ -529,7 +549,7 @@ extern tLLCP_STATUS LLCP_SendData(uint8_t local_sap, uint8_t remote_sap,
 **                  - Recommended max_data_len is data link connection MIU of
 **                    local end point
 **
-** Returns          TRUE if more data in queue
+** Returns          true if more data in queue
 **
 *******************************************************************************/
 extern bool LLCP_ReadDataLinkData(uint8_t local_sap, uint8_t remote_sap,
@@ -553,7 +573,7 @@ extern uint32_t LLCP_FlushDataLinkRxData(uint8_t local_sap, uint8_t remote_sap);
 ** Function         LLCP_DisconnectReq
 **
 ** Description      Disconnect data link
-**                  discard any pending data if flush is set to TRUE
+**                  discard any pending data if flush is set to true
 **
 ** Returns          LLCP_STATUS_SUCCESS if success
 **
@@ -663,7 +683,7 @@ extern tLLCP_STATUS LLCP_DiscoverService(char* p_name, tLLCP_SDP_CBACK* p_cback,
 *******************************************************************************/
 extern void LLCP_RegisterDtaCback(tLLCP_DTA_CBACK* p_dta_cback);
 
-#if (LLCP_TEST_INCLUDED == TRUE)
+#if (LLCP_TEST_INCLUDED == true)
 /*******************************************************************************
 **
 ** Function         LLCP_SetTestParams

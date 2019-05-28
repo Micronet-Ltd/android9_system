@@ -64,7 +64,8 @@ enum {
   NDEF_MSG_INVALID_CHUNK,     /* 8 - Invalid chunk found                  */
   NDEF_MSG_LENGTH_MISMATCH,   /* 9 - Overall message length doesn't match */
   NDEF_MSG_INSUFFICIENT_MEM,  /* 10 - Insuffiecient memory to add record  */
-  NDEF_MSG_INVALID_TYPE       /* 11 - TYPE field contains invalid characters  */
+  NDEF_MSG_EMPTY_PAYLOAD,     /* 11 - Payload length is zero  */
+  NDEF_MSG_INVALID_TYPE       /* 12 - TYPE field contains invalid characters  */
 };
 typedef uint8_t tNDEF_STATUS;
 
@@ -76,7 +77,7 @@ typedef uint8_t tNDEF_STATUS;
 **
 ** Description      This function validates an NDEF message.
 **
-** Returns          TRUE if all OK, or FALSE if the message is invalid.
+** Returns          true if all OK, or false if the message is invalid.
 **
 *******************************************************************************/
 extern tNDEF_STATUS NDEF_MsgValidate(uint8_t* p_msg, uint32_t msg_len,
@@ -357,4 +358,6 @@ extern tNDEF_STATUS NDEF_MsgRemoveRec(uint8_t* p_msg, uint32_t* p_cur_size,
 extern tNDEF_STATUS NDEF_MsgCopyAndDechunk(uint8_t* p_src, uint32_t src_len,
                                            uint8_t* p_dest,
                                            uint32_t* p_out_len);
+
+
 #endif /* NDEF_UTILS_H */

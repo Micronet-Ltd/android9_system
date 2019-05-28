@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 /******************************************************************************
  *
@@ -25,9 +44,9 @@
 #define NFA_DM_INT_H
 
 #include <string>
+#include "nfc_api.h"
 #include "nfa_api.h"
 #include "nfa_sys.h"
-#include "nfc_api.h"
 
 /*****************************************************************************
 **  Constants and data types
@@ -46,6 +65,10 @@ enum {
   NFA_DM_API_DISABLE_POLLING_EVT,
   NFA_DM_API_ENABLE_LISTENING_EVT,
   NFA_DM_API_DISABLE_LISTENING_EVT,
+#if (NXP_EXTNS == TRUE)
+  NFA_DM_API_DISABLE_PASSIVE_LISTENING_EVT,
+  NFA_DM_SET_TRANSIT_CONFIG,
+#endif
   NFA_DM_API_PAUSE_P2P_EVT,
   NFA_DM_API_RESUME_P2P_EVT,
   NFA_DM_API_RAW_FRAME_EVT,
@@ -142,6 +165,13 @@ typedef struct {
   uint16_t rf_disc_dur_ms;
 } tNFA_DM_API_SET_RF_DISC_DUR;
 
+/* data type for NFA_DM_SET_TRANSIT_CONFIG*/
+typedef struct {
+  NFC_HDR hdr;
+  tNFA_DM_CBACK* p_dm_cback;
+  char* transitConfig;
+} tNFA_DM_API_SET_TRANSIT_CONFIG;
+
 /* data type for NFA_DM_API_REG_NDEF_HDLR_EVT */
 #define NFA_NDEF_FLAGS_HANDLE_WHOLE_MESSAGE 0x01
 #define NFA_NDEF_FLAGS_WKT_URI 0x02
@@ -199,6 +229,9 @@ typedef union {
                                     /* NFA_DM_API_DISABLE_POLLING_EVT       */
                                     /* NFA_DM_API_START_RF_DISCOVERY_EVT    */
                                     /* NFA_DM_API_STOP_RF_DISCOVERY_EVT     */
+#if (NXP_EXTNS == TRUE)
+  tNFA_DM_API_SET_TRANSIT_CONFIG transit_config; /* NFA_DM_SET_TRANSIT_CONFIG */
+#endif
   tNFA_DM_API_ENABLE enable;        /* NFA_DM_API_ENABLE_EVT                */
   tNFA_DM_API_DISABLE disable;      /* NFA_DM_API_DISABLE_EVT               */
   tNFA_DM_API_SET_CONFIG setconfig; /* NFA_DM_API_SET_CONFIG_EVT            */
@@ -293,6 +326,7 @@ typedef uint8_t tNFA_DM_RF_DISC_EVT;
 #define NFA_DM_DISC_MASK_PFA_NFC_DEP 0x00001000
 /* Legacy/proprietary/non-NFC Forum protocol (e.g Shanghai transit card) */
 #define NFA_DM_DISC_MASK_P_LEGACY 0x00002000
+#define NFA_DM_DISC_MASK_PB_T3BT 0x00004000
 #define NFA_DM_DISC_MASK_POLL 0x0000FFFF
 
 #define NFA_DM_DISC_MASK_LA_T1T 0x00010000
@@ -309,8 +343,10 @@ typedef uint8_t tNFA_DM_RF_DISC_EVT;
 #define NFA_DM_DISC_MASK_LFA_NFC_DEP 0x08000000
 #define NFA_DM_DISC_MASK_L_LEGACY 0x10000000
 #define NFA_DM_DISC_MASK_LISTEN 0xFFFF0000
-
 #define NFA_DM_DISC_MASK_NFC_DEP 0x0C481848
+#if (NXP_EXTNS == TRUE)
+#define NFA_DM_DISC_MASK_ACTIVE_LISTEN 0xFF00FFFF
+#endif
 
 typedef uint32_t tNFA_DM_DISC_TECH_PROTO_MASK;
 
@@ -342,7 +378,7 @@ typedef uint16_t tNFA_DM_DISC_FLAGS;
 
 /* DM Discovery control block */
 typedef struct {
-  bool in_use;                       /* TRUE if used          */
+  bool in_use;                       /* true if used          */
   tNFA_DISCOVER_CBACK* p_disc_cback; /* discovery callback    */
 
   tNFA_DM_DISC_FLAGS disc_flags; /* specific action flags */
@@ -401,11 +437,10 @@ typedef struct {
   TIMER_LIST_ENT tle; /* timer for waiting deactivation NTF               */
   TIMER_LIST_ENT kovio_tle; /* timer for Kovio bar code tag presence check */
 
-  bool deact_pending; /* TRUE if deactivate while checking presence       */
-  bool deact_notify_pending; /* TRUE if notify DEACTIVATED EVT while Stop rf
+  bool deact_pending; /* true if deactivate while checking presence       */
+  bool deact_notify_pending; /* true if notify DEACTIVATED EVT while Stop rf
                                 discovery*/
   tNFA_DEACTIVATE_TYPE pending_deact_type; /* pending deactivate type */
-
 } tNFA_DM_DISC_CB;
 
 /* NDEF Type Handler Definitions */
@@ -444,6 +479,10 @@ typedef struct {
 #define NFA_DM_FLAGS_P2P_PAUSED 0x00002000
 /* Power Off Sleep                                                      */
 #define NFA_DM_FLAGS_POWER_OFF_SLEEP 0x00008000
+#if (NXP_EXTNS == TRUE)
+/* NFA_DisablePassiveListening() is called and engaged                  */
+#define NFA_DM_FLAGS_PASSIVE_LISTEN_DISABLED 0x00010000
+#endif
 /* stored parameters */
 typedef struct {
   uint8_t total_duration[NCI_PARAM_LEN_TOTAL_DURATION];
@@ -490,7 +529,7 @@ typedef struct {
 
 /*
 **  NFA_NDEF CHO callback
-**  It returns TRUE if NDEF is handled by connection handover module.
+**  It returns true if NDEF is handled by connection handover module.
 */
 typedef bool(tNFA_NDEF_CHO_CBACK)(uint32_t ndef_len, uint8_t* p_ndef_data);
 
@@ -500,6 +539,11 @@ typedef struct {
   tNFA_DM_CBACK* p_dm_cback; /* NFA DM callback */
   TIMER_LIST_ENT tle;
 
+#if (NXP_EXTNS == TRUE)
+  bool presence_check_deact_pending; /* true if deactivate while checking
+                                        presence */
+  tNFA_DEACTIVATE_TYPE presence_check_deact_type; /* deactivate type */
+#endif
   /* NFC link connection management */
   tNFA_CONN_CBACK* p_conn_cback;  /* callback for connection events       */
   tNFA_TECHNOLOGY_MASK poll_mask; /* technologies being polled            */
@@ -543,8 +587,11 @@ typedef struct {
   uint8_t deactivate_cmd_retry_count; /*number of times the deactivation cmd
                                          sent in case of error scenerio */
 
-  uint8_t power_state; /* current screen/power  state */
-  uint32_t eDtaMode;   /* To enable the DTA type modes. */
+  uint32_t eDtaMode;        /* For enable the DTA type modes. */
+#if (NXP_EXTNS == TRUE)
+  uint8_t selected_uicc_id; /* Current selected UICC ID */
+#endif
+  uint8_t power_state;    /* current screen/power  state */
 } tNFA_DM_CB;
 
 /* Internal function prototypes */
@@ -588,13 +635,14 @@ extern tNFA_DM_CB nfa_dm_cb;
 
 void nfa_dm_init(void);
 void nfa_p2p_init(void);
-#if (NFA_SNEP_INCLUDED == TRUE)
+
+#if (NFA_SNEP_INCLUDED == true)
 void nfa_snep_init(bool is_dta_mode);
 #else
 #define nfa_snep_init(is_dta_mode)
 #endif
 
-#if (NFC_NFCEE_INCLUDED == TRUE)
+#if (NFC_NFCEE_INCLUDED == true)
 void nfa_ee_init(void);
 void nfa_hci_init(void);
 #else
@@ -613,6 +661,10 @@ bool nfa_dm_act_enable_polling(tNFA_DM_MSG* p_data);
 bool nfa_dm_act_disable_polling(tNFA_DM_MSG* p_data);
 bool nfa_dm_act_enable_listening(tNFA_DM_MSG* p_data);
 bool nfa_dm_act_disable_listening(tNFA_DM_MSG* p_data);
+#if (NXP_EXTNS == TRUE)
+bool nfa_dm_act_disable_passive_listening(tNFA_DM_MSG* p_data);
+bool nfa_dm_set_transit_config(tNFA_DM_MSG* p_data);
+#endif
 bool nfa_dm_act_pause_p2p(tNFA_DM_MSG* p_data);
 bool nfa_dm_act_resume_p2p(tNFA_DM_MSG* p_data);
 bool nfa_dm_act_send_raw_frame(tNFA_DM_MSG* p_data);
@@ -629,9 +681,11 @@ bool nfa_dm_ndef_dereg_hdlr(tNFA_DM_MSG* p_data);
 
 bool nfa_dm_act_reg_vsc(tNFA_DM_MSG* p_data);
 bool nfa_dm_act_send_vsc(tNFA_DM_MSG* p_data);
+#if (NXP_EXTNS == TRUE)
+void nfa_dm_p2p_prio_logic_disable();
 uint16_t nfa_dm_act_get_rf_disc_duration();
+#endif
 bool nfa_dm_act_disable_timeout(tNFA_DM_MSG* p_data);
-
 bool nfa_dm_set_power_sub_state(tNFA_DM_MSG* p_data);
 
 void nfa_dm_proc_nfcc_power_mode(uint8_t nfcc_power_mode);
@@ -669,12 +723,17 @@ tNFC_STATUS nfa_dm_disc_sleep_wakeup(void);
 tNFC_STATUS nfa_dm_disc_start_kovio_presence_check(void);
 bool nfa_dm_is_raw_frame_session(void);
 bool nfa_dm_is_p2p_paused(void);
+void nfa_dm_p2p_prio_logic_cleanup(void);
+void nfa_dm_deact_ntf_timeout();
 
-#if (NFC_NFCEE_INCLUDED == FALSE)
+#if (NFC_NFCEE_INCLUDED == false)
 #define nfa_ee_get_tech_route(ps, ha) \
   memset(ha, NFC_DH_ID, NFA_DM_MAX_TECH_ROUTE);
 #endif
 
 std::string nfa_dm_nfc_revt_2_str(tNFC_RESPONSE_EVT event);
 
+#if (NXP_EXTNS == TRUE)
+tNFC_STATUS nfc_ncif_reset_nfcc();
+#endif
 #endif /* NFA_DM_INT_H */

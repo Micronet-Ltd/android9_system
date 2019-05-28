@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 /******************************************************************************
  *
@@ -26,12 +45,11 @@
 
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
-#include <log/log.h>
 
 #include "nfc_target.h"
 
-#include "nci_hmsgs.h"
 #include "nfc_api.h"
+#include "nci_hmsgs.h"
 #include "rw_api.h"
 #include "rw_int.h"
 
@@ -39,7 +57,7 @@ using android::base::StringPrintf;
 
 extern bool nfc_debug_enabled;
 
-#if (RW_NDEF_INCLUDED == TRUE)
+#if (RW_NDEF_INCLUDED == true)
 
 /* Local static functions */
 static void rw_t2t_handle_cc_read_rsp(void);
@@ -97,6 +115,14 @@ void rw_t2t_handle_rsp(uint8_t* p_data) {
   if (p_t2t->substate == RW_T2T_SUBSTATE_WAIT_READ_CC) {
     p_t2t->b_read_hdr = true;
     memcpy(p_t2t->tag_hdr, p_data, T2T_READ_DATA_LEN);
+#if (NXP_EXTNS == TRUE)
+    /* On Ultralight - C tag, if CC is corrupt, correct it */
+    if ((p_t2t->tag_hdr[0] == TAG_MIFARE_MID) &&
+        (p_t2t->tag_hdr[T2T_CC2_TMS_BYTE] >= T2T_INVALID_CC_TMS_VAL0) &&
+        (p_t2t->tag_hdr[T2T_CC2_TMS_BYTE] <= T2T_INVALID_CC_TMS_VAL1)) {
+      p_t2t->tag_hdr[T2T_CC2_TMS_BYTE] = T2T_CC2_TMS_MULC;
+    }
+#endif
   }
 
   switch (p_t2t->state) {
@@ -280,8 +306,10 @@ static void rw_t2t_ntf_tlv_detect_complete(tNFC_STATUS status) {
     evt_data.msg_len = p_t2t->prop_msg_len;
     evt_data.status = status;
     rw_t2t_handle_op_complete();
+    tRW_DATA rw_data;
+    rw_data.t2t_detect = evt_data;
     /* FIXME: Unsafe cast */
-    (*rw_cb.p_cback)(RW_T2T_TLV_DETECT_EVT, (tRW_DATA*)&evt_data);
+    (*rw_cb.p_cback)(RW_T2T_TLV_DETECT_EVT, &rw_data);
   } else {
     /* Notify upper layer the result of Lock/Mem TLV detect op */
     tRW_DETECT_TLV_DATA tlv_data;
@@ -596,6 +624,9 @@ static void rw_t2t_handle_tlv_detect_rsp(uint8_t* p_data) {
           case TAG_LOCK_CTRL_TLV:
             p_t2t->bytes_count--;
             if ((tlvtype == TAG_LOCK_CTRL_TLV) || (tlvtype == TAG_NDEF_TLV)) {
+              if (p_t2t->bytes_count > 2)
+                // avoid causing negative index
+                break;
               /* Collect Lock TLV */
               p_t2t->tlv_value[2 - p_t2t->bytes_count] = p_data[offset];
               if (p_t2t->bytes_count == 0) {
@@ -616,10 +647,6 @@ static void rw_t2t_handle_tlv_detect_rsp(uint8_t* p_data) {
 
                 /* Extract lockbytes info addressed by this Lock TLV */
                 xx = 0;
-                if (count > RW_T2T_MAX_LOCK_BYTES) {
-                  count = RW_T2T_MAX_LOCK_BYTES;
-                  android_errorWriteLog(0x534e4554, "112161557");
-                }
                 while (xx < count) {
                   p_t2t->lockbyte[p_t2t->num_lockbytes].tlv_index =
                       p_t2t->num_lock_tlvs;
@@ -644,6 +671,9 @@ static void rw_t2t_handle_tlv_detect_rsp(uint8_t* p_data) {
           case TAG_MEM_CTRL_TLV:
             p_t2t->bytes_count--;
             if ((tlvtype == TAG_MEM_CTRL_TLV) || (tlvtype == TAG_NDEF_TLV)) {
+              if (p_t2t->bytes_count > 2)
+                // avoid causing negative index
+                break;
               p_t2t->tlv_value[2 - p_t2t->bytes_count] = p_data[offset];
               if (p_t2t->bytes_count == 0) {
                 if (p_t2t->num_mem_tlvs >= RW_T2T_MAX_MEM_TLVS) {
@@ -765,7 +795,14 @@ tNFC_STATUS rw_t2t_read_locks(void) {
   uint16_t offset;
   uint16_t block;
 
-  if ((p_t2t->tag_hdr[T2T_CC3_RWA_BYTE] != T2T_CC3_RWA_RW) ||
+  if ((p_t2t->tag_hdr[T2T_CC3_RWA_BYTE] != T2T_CC3_RWA_RW)
+#if (NXP_EXTNS == TRUE)
+      || ((p_t2t->tag_hdr[0] == TAG_MIFARE_MID) &&
+          (p_t2t->tag_hdr[T2T_CC2_TMS_BYTE] == T2T_CC2_TMS_MULC)) ||
+      ((p_t2t->tag_hdr[0] == TAG_MIFARE_MID) &&
+       (p_t2t->tag_hdr[T2T_CC2_TMS_BYTE] == T2T_CC2_TMS_MUL))
+#endif
+      ||
       (p_t2t->skip_dyn_locks)) {
     /* Skip reading dynamic lock bytes if CC is set as Read only or layer above
      * instructs to skip */
@@ -776,7 +813,11 @@ tNFC_STATUS rw_t2t_read_locks(void) {
     }
   }
 
-  while (num_locks < p_t2t->num_lockbytes) {
+  while ((num_locks < p_t2t->num_lockbytes)
+#if (NXP_EXTNS == TRUE)
+         && (num_locks < RW_T2T_MAX_LOCK_BYTES)
+#endif
+             ) {
     if (p_t2t->lockbyte[num_locks].b_lock_read == false) {
       /* Send Read command to read the first un read locks */
       offset = p_t2t->lock_tlv[p_t2t->lockbyte[num_locks].tlv_index].offset +
@@ -991,8 +1032,8 @@ tNFC_STATUS rw_t2t_read_ndef_next_block(uint16_t block) {
 **                  ndef bytes can exist and check if the whole block can be
 **                  updated or only part of block can be modified.
 **
-** Returns          TRUE, if the block returned should be read before writting
-**                  FALSE, if the block need not be read as it was already
+** Returns          true, if the block returned should be read before writting
+**                  false, if the block need not be read as it was already
 **                         read or during NDEF write we may completely overwrite
 **                         the block and there is no reserved or locked bytes in
 **                         that block
@@ -1231,7 +1272,10 @@ tNFC_STATUS rw_t2t_write_ndef_next_block(uint16_t block, uint16_t msg_len,
              p_t2t->work_offset < p_t2t->new_ndef_msg_len) {
         if (rw_t2t_is_lock_res_byte(
                 (uint16_t)((block * T2T_BLOCK_SIZE) + index)) == false) {
+          if(p_t2t->work_offset < 3)
+          {
           write_block[index] = length_field[p_t2t->work_offset];
+          }
           p_t2t->work_offset++;
         }
         index++;
@@ -1733,7 +1777,7 @@ static void rw_t2t_handle_config_tag_readonly(uint8_t* p_data) {
         break;
       }
 
-    /* Coverity: [FALSE-POSITIVE error] intended fall through */
+    /* Coverity: [false-POSITIVE error] intended fall through */
     /* Missing break statement between cases in switch statement */
     /* fall through */
     case RW_T2T_SUBSTATE_WAIT_SET_DYN_LOCK_BITS:
@@ -2136,14 +2180,14 @@ static uint8_t rw_t2t_get_lock_bits_for_segment(uint8_t segment,
 ** Function         rw_t2t_update_lock_attributes
 **
 ** Description      This function will check if the tag index passed as
-**                  argument is a locked byte and return TRUE or FALSE
+**                  argument is a locked byte and return true or false
 **
 ** Parameters:      index, the index of the byte in the tag
 **
 **
-** Returns          TRUE, if the specified index in the tag is a locked or
+** Returns          true, if the specified index in the tag is a locked or
 **                        reserved or otp byte
-**                  FALSE, otherwise
+**                  false, otherwise
 **
 *******************************************************************************/
 static void rw_t2t_update_lock_attributes(void) {
@@ -2233,8 +2277,15 @@ static void rw_t2t_update_lock_attributes(void) {
       while (xx < num_lock_bits) {
         bytes_covered = 0;
         while (bytes_covered < bytes_locked_per_lock_bit) {
+#if (NXP_EXTNS == TRUE)
+          if ((p_t2t->lockbyte[num_dyn_lock_bytes].lock_byte &
+               rw_t2t_mask_bits[xx]) &&
+              (block_count < RW_T2T_SEGMENT_SIZE))
+#else
           if (p_t2t->lockbyte[num_dyn_lock_bytes].lock_byte &
-              rw_t2t_mask_bits[xx]) {
+              rw_t2t_mask_bits[xx])
+#endif
+          {
             /* If the bit is set then it is locked */
             p_t2t->lock_attr[block_count] |= 0x01 << bits_covered;
           }
@@ -2263,14 +2314,14 @@ static void rw_t2t_update_lock_attributes(void) {
 **
 ** Description      This function will check if the tag index passed as
 **                  argument is a lock or reserved or otp byte and return
-**                  TRUE or FALSE
+**                  true or false
 **
 ** Parameters:      index, the index of the byte in the tag
 **
 **
-** Returns          TRUE, if the specified index in the tag is a locked or
+** Returns          true, if the specified index in the tag is a locked or
 **                        reserved or otp byte
-**                  FALSE, otherwise
+**                  false, otherwise
 **
 *******************************************************************************/
 static bool rw_t2t_is_lock_res_byte(uint16_t index) {
@@ -2304,14 +2355,14 @@ static bool rw_t2t_is_lock_res_byte(uint16_t index) {
 **
 ** Description      This function will check if the tag index passed as
 **                  argument is a locked and return
-**                  TRUE or FALSE
+**                  true or false
 **
 ** Parameters:      index, the index of the byte in the tag
 **
 **
-** Returns          TRUE, if the specified index in the tag is a locked or
+** Returns          true, if the specified index in the tag is a locked or
 **                        reserved or otp byte
-**                  FALSE, otherwise
+**                  false, otherwise
 **
 *******************************************************************************/
 static bool rw_t2t_is_read_only_byte(uint16_t index) {
@@ -2584,8 +2635,7 @@ tNFC_STATUS rw_t2t_format_tag(void) {
          (p_t2t->tag_hdr[T2T_CC1_VNO_BYTE] != T2T_CC1_LEGACY_VNO) &&
          (p_t2t->tag_hdr[T2T_CC1_VNO_BYTE] != T2T_CC1_VNO) &&
          (p_t2t->tag_hdr[T2T_CC1_VNO_BYTE] != T2T_CC1_NEW_VNO))) {
-      LOG(WARNING) << StringPrintf(
-          "rw_t2t_format_tag - Tag not blank to Format!");
+      LOG(WARNING) << StringPrintf("rw_t2t_format_tag - Tag not blank to Format!");
       return (NFC_STATUS_FAILED);
     } else {
       tms = p_t2t->tag_hdr[T2T_CC2_TMS_BYTE];
@@ -2594,7 +2644,7 @@ tNFC_STATUS rw_t2t_format_tag(void) {
   } else
     tms = p_ret->tms;
 
-  memset(p_t2t->tag_data, 0, T2T_READ_DATA_LEN);
+  memset(p_t2t->tag_data, 0, sizeof(p_t2t->tag_data));
 
   if (!b_blank_tag || !p_ret->b_multi_version) {
     status = rw_t2t_set_cc(tms);
@@ -2699,9 +2749,8 @@ tNFC_STATUS RW_T2tFormatNDef(void) {
   tNFC_STATUS status = NFC_STATUS_FAILED;
 
   if (p_t2t->state != RW_T2T_STATE_IDLE) {
-    LOG(WARNING) << StringPrintf(
-        "RW_T2tFormatNDef - Tag not initialized/ Busy! State: %u",
-        p_t2t->state);
+    LOG(WARNING) << StringPrintf("RW_T2tFormatNDef - Tag not initialized/ Busy! State: %u",
+                      p_t2t->state);
     return (NFC_STATUS_FAILED);
   }
 
@@ -2744,15 +2793,14 @@ tNFC_STATUS RW_T2tLocateTlv(uint8_t tlv_type) {
   uint16_t block;
 
   if (p_t2t->state != RW_T2T_STATE_IDLE) {
-    LOG(ERROR) << StringPrintf(
-        "Error: Type 2 tag not activated or Busy - State: %u", p_t2t->state);
+    LOG(ERROR) << StringPrintf("Error: Type 2 tag not activated or Busy - State: %u",
+                    p_t2t->state);
     return (NFC_STATUS_BUSY);
   }
 
   if ((tlv_type != TAG_LOCK_CTRL_TLV) && (tlv_type != TAG_MEM_CTRL_TLV) &&
       (tlv_type != TAG_NDEF_TLV) && (tlv_type != TAG_PROPRIETARY_TLV)) {
-    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-        "RW_T2tLocateTlv - Cannot search TLV: 0x%02x", tlv_type);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("RW_T2tLocateTlv - Cannot search TLV: 0x%02x", tlv_type);
     return (NFC_STATUS_FAILED);
   }
 
@@ -2869,14 +2917,13 @@ tNFC_STATUS RW_T2tReadNDef(uint8_t* p_buffer, uint16_t buf_len) {
   uint16_t block;
 
   if (p_t2t->state != RW_T2T_STATE_IDLE) {
-    LOG(ERROR) << StringPrintf(
-        "Error: Type 2 tag not activated or Busy - State: %u", p_t2t->state);
+    LOG(ERROR) << StringPrintf("Error: Type 2 tag not activated or Busy - State: %u",
+                    p_t2t->state);
     return (NFC_STATUS_FAILED);
   }
 
   if (p_t2t->ndef_status == T2T_NDEF_NOT_DETECTED) {
-    LOG(ERROR) << StringPrintf(
-        "RW_T2tReadNDef - Error: NDEF detection not performed yet");
+    LOG(ERROR) << StringPrintf("RW_T2tReadNDef - Error: NDEF detection not performed yet");
     return (NFC_STATUS_FAILED);
   }
 
@@ -2888,8 +2935,8 @@ tNFC_STATUS RW_T2tReadNDef(uint8_t* p_buffer, uint16_t buf_len) {
   }
 
   if (!p_t2t->ndef_msg_len) {
-    LOG(WARNING) << StringPrintf(
-        "RW_T2tReadNDef - NDEF Message length is zero");
+    LOG(WARNING) << StringPrintf("RW_T2tReadNDef - NDEF Message length is zero %u",
+                      p_t2t->ndef_msg_len);
     return (NFC_STATUS_NOT_INITIALIZED);
   }
 
@@ -2942,26 +2989,25 @@ tNFC_STATUS RW_T2tReadNDef(uint8_t* p_buffer, uint16_t buf_len) {
 tNFC_STATUS RW_T2tWriteNDef(uint16_t msg_len, uint8_t* p_msg) {
   tRW_T2T_CB* p_t2t = &rw_cb.tcb.t2t;
   uint16_t block;
+  uint8_t offset = 0;
   const tT2T_INIT_TAG* p_ret;
 
   tNFC_STATUS status = NFC_STATUS_OK;
 
   if (p_t2t->state != RW_T2T_STATE_IDLE) {
-    LOG(ERROR) << StringPrintf(
-        "Error: Type 2 tag not activated or Busy - State: %u", p_t2t->state);
+    LOG(ERROR) << StringPrintf("Error: Type 2 tag not activated or Busy - State: %u",
+                    p_t2t->state);
     return (NFC_STATUS_FAILED);
   }
 
   if (p_t2t->ndef_status == T2T_NDEF_NOT_DETECTED) {
-    LOG(ERROR) << StringPrintf(
-        "RW_T2tWriteNDef - Error: NDEF detection not performed!");
+    LOG(ERROR) << StringPrintf("RW_T2tWriteNDef - Error: NDEF detection not performed!");
     return (NFC_STATUS_FAILED);
   }
 
   if (p_t2t->tag_hdr[T2T_CC3_RWA_BYTE] != T2T_CC3_RWA_RW) {
-    LOG(ERROR) << StringPrintf(
-        "RW_T2tWriteNDef - Write access not granted - CC3: %u",
-        p_t2t->tag_hdr[T2T_CC3_RWA_BYTE]);
+    LOG(ERROR) << StringPrintf("RW_T2tWriteNDef - Write access not granted - CC3: %u",
+                    p_t2t->tag_hdr[T2T_CC3_RWA_BYTE]);
     return (NFC_STATUS_REFUSED);
   }
 
@@ -2995,8 +3041,13 @@ tNFC_STATUS RW_T2tWriteNDef(uint16_t msg_len, uint8_t* p_msg) {
       (p_t2t->b_read_data)) {
     p_t2t->state = RW_T2T_STATE_WRITE_NDEF;
     p_t2t->block_read = block;
-    rw_t2t_handle_ndef_write_rsp(
-        &p_t2t->tag_data[(block - T2T_FIRST_DATA_BLOCK) * T2T_BLOCK_LEN]);
+    offset = (block - T2T_FIRST_DATA_BLOCK) * T2T_BLOCK_LEN;
+    if (offset <= T2T_READ_DATA_LEN)
+      rw_t2t_handle_ndef_write_rsp(&p_t2t->tag_data[offset]);
+    else {
+      LOG(WARNING) << StringPrintf("tag_data offset exceeds the limit");
+      return (NFC_STATUS_FAILED);
+    }
   } else {
     status = rw_t2t_read(block);
     if (status == NFC_STATUS_OK)
@@ -3050,4 +3101,4 @@ tNFC_STATUS RW_T2tSetTagReadOnly(bool b_hard_lock) {
   return status;
 }
 
-#endif /* (RW_NDEF_INCLUDED == TRUE) */
+#endif /* (RW_NDEF_INCLUDED == true) */

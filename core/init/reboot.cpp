@@ -347,7 +347,7 @@ void DoReboot(unsigned int cmd, const std::string& reason, const std::string& re
     size_t skip = 0;
     std::vector<std::string> reasons = Split(reason, ",");
     if (reasons.size() >= 2 && reasons[0] == "reboot" &&
-        (reasons[1] == "recovery" || reasons[1] == "bootloader" || reasons[1] == "cold" ||
+        (reasons[1] == "recovery" || reasons[1] == "bootloader" || reasons[1] == "cold" || reasons[1] == "userswitch" || reasons[1] == "testswitch" ||
          reasons[1] == "hard" || reasons[1] == "warm")) {
         skip = strlen("reboot,");
     }

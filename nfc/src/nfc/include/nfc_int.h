@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 /******************************************************************************
  *
@@ -26,18 +45,21 @@
 #ifndef NFC_INT_H_
 #define NFC_INT_H_
 
+#include "nfc_target.h"
 #include "gki.h"
 #include "nci_defs.h"
 #include "nfc_api.h"
-#include "nfc_target.h"
 
 /****************************************************************************
-** Internal NFC constants and definitions
-****************************************************************************/
-
+ ** Internal NFC constants and definitions
+ ****************************************************************************/
+#if (NXP_EXTNS == TRUE)
+#define NFC_NCI_SETMODE_NTF_TIMEOUT 2 /* time out for modeSet notification */
+#define NFCEE_ID_ESE 0xC0
+#endif
 /****************************************************************************
-** NFC_TASK definitions
-****************************************************************************/
+ ** NFC_TASK definitions
+ ****************************************************************************/
 
 /* NFC_TASK event masks */
 #define NFC_TASK_EVT_TRANSPORT_READY EVENT_MASK(APPL_EVT_0)
@@ -46,8 +68,13 @@
 #define NFC_TTYPE_NCI_WAIT_RSP 0
 #define NFC_TTYPE_WAIT_2_DEACTIVATE 1
 #define NFC_WAIT_RSP_RAW_VS 0x02
-#define NFC_TTYPE_WAIT_MODE_SET_NTF 2
-
+#define NFC_TTYPE_WAIT_SETMODE_NTF 6
+#if (NXP_EXTNS == TRUE)
+#define NFC_TTYPE_NCI_WAIT_DATA_NTF 2
+#define NFC_TTYPE_NCI_WAIT_RF_FIELD_NTF 3
+#define NFC_TYPE_NCI_WAIT_SETMODE_NTF 4
+#define NFC_TYPE_NCI_WAIT_SETMODE_RSP 5
+#endif
 #define NFC_TTYPE_LLCP_LINK_MANAGER 100
 #define NFC_TTYPE_LLCP_LINK_INACT 101
 #define NFC_TTYPE_LLCP_DATA_LINK 102
@@ -58,12 +85,26 @@
 #define NFC_TTYPE_RW_T4T_RESPONSE 107
 #define NFC_TTYPE_RW_I93_RESPONSE 108
 #define NFC_TTYPE_CE_T4T_UPDATE 109
+
 /* added for p2p prio logic timer */
 #define NFC_TTYPE_P2P_PRIO_RESPONSE 110
 /* added for p2p prio logic clenaup */
-#define NFC_TTYPE_P2P_PRIO_LOGIC_CLEANUP 111
-/* time out for mode set notification */
-#define NFC_MODE_SET_NTF_TIMEOUT 2
+#define NFC_TTYPE_P2P_PRIO_LOGIC_CLEANUP 112
+#if (NXP_EXTNS == TRUE)
+/* added for listen activation timer */
+#define NFC_TTYPE_LISTEN_ACTIVATION 111
+#define NFC_TTYPE_P2P_PRIO_LOGIC_DEACT_NTF_TIMEOUT 113
+#endif
+/* time out for modeSet notification */
+#define NFC_SETMODE_NTF_TIMEOUT     2
+#if (NXP_EXTNS == TRUE)
+/* Added for sending fave pwr link response to JNI since pwrlink cmd has been
+                                                  ignored due to RF CE session
+   */
+#define NFC_TTYPE_PWR_LINK_RSP 201
+#define NFC_TTYPE_SET_MODE_RSP 202
+#endif
+
 /* NFC Task event messages */
 
 enum {
@@ -84,7 +125,17 @@ enum {
   NFA_DM_P2P_PRIO_RSP = 0x01, /* P2P priority event from RSP   */
   NFA_DM_P2P_PRIO_NTF         /* P2P priority event from NTF   */
 };
-
+enum {
+  I2C_FRAGMENATATION_ENABLED, /*i2c fragmentation_enabled           */
+  I2C_FRAGMENTATION_DISABLED  /*i2c_fragmentation_disabled          */
+};
+#if (NXP_EXTNS == TRUE)
+/*Get or Set swp activation state for UICC*/
+typedef enum {
+  GET_UICC_CONFIG = 0x01, /*get swp activation state for UICC  */
+  SET_UICC_CONFIG         /*set swp activation state for UICC  */
+} uicc_config_t;
+#endif
 /* NFC control block flags */
 /* NFC_Deactivate () is called and the NCI cmd is not sent   */
 #define NFC_FL_DEACTIVATING 0x0001
@@ -103,7 +154,7 @@ enum {
 /* NFC_FL_CONTROL_REQUESTED on HAL request      */
 #define NFC_FL_HAL_REQUESTED 0x0080
 /* Waiting for NFCEE Mode Set NTF                 */
-#define NFC_FL_WAIT_MODE_SET_NTF 0x0100
+#define NFC_FL_WAIT_MODE_SET_NTF        0x0100  /* Waiting for NFCEE Mode Set NTF*/
 
 #define NFC_PEND_CONN_ID 0xFE
 #define NFC_CONN_ID_ID_MASK NCI_CID_MASK
@@ -122,15 +173,18 @@ enum {
 
 typedef struct {
   tNFC_CONN_CBACK* p_cback; /* the callback function to receive the data */
-  BUFFER_Q tx_q;         /* transmit queue                                   */
-  BUFFER_Q rx_q;         /* receive queue                                    */
-  uint8_t id;            /* NFCEE ID or RF Discovery ID or NFC_TEST_ID       */
-  uint8_t act_protocol;  /* the active protocol on this logical connection   */
-  uint8_t act_interface; /* the active interface on this logical connection   */
-  uint8_t conn_id;       /* the connection id assigned by NFCC for this conn */
-  uint8_t buff_size;     /* the max buffer size for this connection.     .   */
-  uint8_t num_buff;      /* num of buffers left to send on this connection   */
-  uint8_t init_credits;  /* initial num of buffer credits                    */
+  BUFFER_Q tx_q;        /* transmit queue                                   */
+  BUFFER_Q rx_q;        /* receive queue                                    */
+  uint8_t id;           /* NFCEE ID or RF Discovery ID or NFC_TEST_ID       */
+  uint8_t act_protocol; /* the active protocol on this logical connection   */
+  uint8_t act_interface;/* the active interface on this logical connection   */
+  uint8_t conn_id;      /* the connection id assigned by NFCC for this conn */
+  uint8_t buff_size;    /* the max buffer size for this connection.     .   */
+  uint8_t num_buff;     /* num of buffers left to send on this connection   */
+  uint8_t init_credits; /* initial num of buffer credits                    */
+#if (NXP_EXTNS == TRUE)
+  uint8_t sel_res; /* the sel_res of the activated rf interface connection */
+#endif
 } tNFC_CONN_CB;
 
 /* This data type is for NFC task to send a NCI VS command to NCIT task */
@@ -156,6 +210,21 @@ typedef struct {
 
 /* NCI command buffer contains a VSC (in NFC_HDR.layer_specific) */
 #define NFC_WAIT_RSP_VSC 0x01
+#if (NXP_EXTNS == TRUE)
+#endif
+typedef struct {
+  bool bPwrLinkCmdRequested;
+  tNFC_INTF_REQ_SRC reqSrc;
+  uint16_t param;
+} tNFC_PWRLINK_CMD;
+
+typedef struct {
+  uint8_t data_ntf_timeout; /* indicates credit ntf timeout occured         */
+  uint8_t
+      nci_cmd_channel_busy; /*  indicates to the data queue that cmd is sent */
+  uint8_t data_stored;      /*  indicates data is stored to be sent later  */
+  uint8_t conn_id;          /*  stores the conn_id of the data stored       */
+} i2c_data;
 
 /* NFC control blocks */
 typedef struct {
@@ -187,19 +256,37 @@ typedef struct {
   uint8_t num_disc_maps; /* number of RF Discovery interface mappings */
   void* p_disc_pending;  /* the parameters associated with pending
                             NFC_DiscoveryStart */
+#if (NXP_EXTNS == TRUE)
+  void* p_last_disc; /* the parameters associated with pending
+                        NFC_DiscoveryStart */
+#endif
 
   /* NFC_TASK timer management */
   TIMER_LIST_Q timer_queue; /* 1-sec timer event queue */
   TIMER_LIST_Q quick_timer_queue;
-  TIMER_LIST_ENT mode_set_ntf_timer; /* Timer to wait for deactivation */
-  TIMER_LIST_ENT deactivate_timer;   /* Timer to wait for deactivation */
 
+  TIMER_LIST_ENT deactivate_timer; /* Timer to wait for deactivation */
+  TIMER_LIST_ENT mode_set_ntf_timer; /* Timer to wait for deactivation */
   tNFC_STATE nfc_state;
   bool reassembly; /* Reassemble fragmented data pkt */
+#if (NXP_EXTNS == TRUE)
+  tNFC_STATE old_nfc_state;
+#endif
   uint8_t last_hdr[NFC_SAVED_HDR_SIZE]; /* part of last NCI command header */
   uint8_t last_cmd[NFC_SAVED_CMD_SIZE]; /* part of last NCI command payload */
+#if (NXP_EXTNS == TRUE)
+  uint8_t* last_cmd_buf;
+  uint8_t cmd_size;
+#endif
   void* p_vsc_cback;       /* the callback function for last VSC command */
   BUFFER_Q nci_cmd_xmit_q; /* NCI command queue */
+#if (NXP_EXTNS == TRUE)
+  BUFFER_Q nci_cmd_recov_xmit_q; /* NCI recovery command queue */
+  TIMER_LIST_ENT
+  listen_activation_timer_list; /* Timer for monitoring listen activation */
+  TIMER_LIST_ENT
+  nci_wait_data_ntf_timer; /* Timer for waiting for core credit ntf*/
+#endif
   TIMER_LIST_ENT
   nci_wait_rsp_timer;         /* Timer for waiting for nci command response */
   uint16_t nci_wait_rsp_tout; /* NCI command timeout (in ms) */
@@ -211,8 +298,26 @@ typedef struct {
   NFC_HDR* p_nci_init_rsp; /* holding INIT_RSP until receiving
                               HAL_NFC_POST_INIT_CPLT_EVT */
   tHAL_NFC_ENTRY* p_hal;
-
-  uint8_t nci_version; /* NCI version used for NCI communication*/
+  i2c_data i2c_data_t; /* holding i2c fragmentation data */
+#if (NXP_EXTNS == TRUE)
+  uint8_t boot_mode;
+  bool bBlockWiredMode;
+  bool bRetransmitDwpPacket;
+  bool bIsCreditNtfRcvd;
+  bool bSetmodeOnReq;
+  bool bCeActivatedeSE;
+  tNFC_PWRLINK_CMD pwr_link_cmd;
+  TIMER_LIST_ENT rf_filed_event_timeout_timer;
+  TIMER_LIST_ENT nci_wait_setMode_Ntf_timer;
+  TIMER_LIST_ENT nci_wait_pwrLinkRsp_timer;
+  TIMER_LIST_ENT nci_wait_setModeRsp_timer;
+  bool bIsDwpResPending;
+  bool bIssueModeSetCmd;
+  bool bBlkPwrlinkAndModeSetCmd;
+  NFC_HDR* temp_data;
+  bool isLowRam;
+#endif
+  uint8_t nci_version;     /* NCI version used for NCI communication*/
 
   bool isScbrSupported; /* indicating if system code based route is supported */
 
@@ -222,28 +327,39 @@ typedef struct {
 
   uint16_t nci_max_v_size; /*maximum NFC V rf frame size*/
 
+  TIMER_LIST_ENT nci_setmode_ntf_timer;/*Mode notification timer*/
   uint8_t rawVsCbflag;
   uint8_t deact_reason;
-
-  TIMER_LIST_ENT nci_mode_set_ntf_timer; /*Mode set notification timer*/
-
 } tNFC_CB;
 
+#if (NXP_EXTNS == TRUE)
+typedef struct phNxpNci_getCfg_info {
+  bool isGetcfg;
+  uint8_t total_duration[4];
+  uint8_t total_duration_len;
+  uint8_t atr_req_gen_bytes[48];
+  uint8_t atr_req_gen_bytes_len;
+  uint8_t atr_res_gen_bytes[48];
+  uint8_t atr_res_gen_bytes_len;
+  uint8_t pmid_wt[3];
+  uint8_t pmid_wt_len;
+} phNxpNci_getCfg_info_t;
+
+typedef struct {
+  uint8_t fw_update_reqd;
+  uint8_t rf_update_reqd;
+} tNFC_FWUpdate_Info_t;
+#endif
 /*****************************************************************************
-**  EXTERNAL FUNCTION DECLARATIONS
-*****************************************************************************/
+ **  EXTERNAL FUNCTION DECLARATIONS
+ *****************************************************************************/
 
 /* Global NFC data */
 extern tNFC_CB nfc_cb;
 
 /****************************************************************************
-** Internal nfc functions
-****************************************************************************/
-
-#define NCI_CALCULATE_ACK(a, v) \
-  { (a) &= ((1 << (v)) - 1); }
-#define MAX_NUM_VALID_BITS_FOR_ACK 0x07
-
+ ** Internal nfc functions
+ ****************************************************************************/
 /* from nfc_utils.c */
 extern tNFC_CONN_CB* nfc_alloc_conn_cb(tNFC_CONN_CBACK* p_cback);
 extern tNFC_CONN_CB* nfc_find_conn_cb_by_conn_id(uint8_t conn_id);
@@ -256,8 +372,8 @@ extern void nfc_data_event(tNFC_CONN_CB* p_cb);
 extern uint8_t nfc_ncif_send_data(tNFC_CONN_CB* p_cb, NFC_HDR* p_data);
 extern void nfc_ncif_cmd_timeout(void);
 extern void nfc_wait_2_deactivate_timeout(void);
-extern void nfc_mode_set_ntf_timeout(void);
-
+extern void nfc_modeset_ntf_timeout(void);
+extern void nfc_ncif_credit_ntf_timeout(void);
 extern bool nfc_ncif_process_event(NFC_HDR* p_msg);
 extern void nfc_ncif_check_cmd_queue(NFC_HDR* p_buf);
 extern void nfc_ncif_send_cmd(NFC_HDR* p_buf);
@@ -271,7 +387,7 @@ extern void nfc_ncif_proc_credits(uint8_t* p, uint16_t plen);
 extern void nfc_ncif_proc_activate(uint8_t* p, uint8_t len);
 extern void nfc_ncif_proc_deactivate(uint8_t status, uint8_t deact_type,
                                      bool is_ntf);
-#if (NFC_NFCEE_INCLUDED == TRUE && NFC_RW_ONLY == FALSE)
+#if ((NFC_NFCEE_INCLUDED == true) && (NFC_RW_ONLY == false))
 extern void nfc_ncif_proc_ee_action(uint8_t* p, uint16_t plen);
 extern void nfc_ncif_proc_ee_discover_req(uint8_t* p, uint16_t plen);
 extern void nfc_ncif_proc_get_routing(uint8_t* p, uint8_t len);
@@ -284,6 +400,13 @@ extern void nfc_ncif_proc_reset_rsp(uint8_t* p, bool is_ntf);
 extern void nfc_ncif_proc_init_rsp(NFC_HDR* p_msg);
 extern void nfc_ncif_proc_get_config_rsp(NFC_HDR* p_msg);
 extern void nfc_ncif_proc_data(NFC_HDR* p_msg);
+#if (NXP_EXTNS == TRUE)
+extern tNFC_STATUS nfc_ncif_store_FWVersion(uint8_t* p_buf);
+extern uint8_t nfc_ncif_retransmit_data(tNFC_CONN_CB* p_cb, NFC_HDR* p_data);
+extern tNFC_STATUS nfc_ncif_set_MaxRoutingTableSize(uint8_t* p_buf);
+extern void nfc_ncif_empty_cmd_queue();
+extern void nfc_ncif_proc_rf_wtx_ntf(uint8_t* p, uint16_t plen);
+#endif
 extern bool nfa_dm_p2p_prio_logic(uint8_t event, uint8_t* p, uint8_t ntf_rsp);
 extern void nfa_dm_p2p_timer_event();
 extern bool nfc_ncif_proc_proprietary_rsp(uint8_t mt, uint8_t gid, uint8_t oid);
@@ -317,4 +440,7 @@ void nfc_start_quick_timer(TIMER_LIST_ENT* p_tle, uint16_t type,
                            uint32_t timeout);
 void nfc_stop_quick_timer(TIMER_LIST_ENT* p_tle);
 void nfc_process_quick_timer_evt(void);
+void set_i2c_fragmentation_enabled(int value);
+int get_i2c_fragmentation_enabled();
+
 #endif /* NFC_INT_H_ */

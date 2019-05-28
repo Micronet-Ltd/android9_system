@@ -65,7 +65,7 @@ void nfa_nv_ci_read(uint16_t num_bytes_read, tNFA_NV_CO_STATUS status,
 *******************************************************************************/
 void nfa_nv_ci_write(tNFA_NV_CO_STATUS status) {
   tNFA_HCI_EVENT_DATA* p_msg;
-
+  (void)status;
   p_msg = (tNFA_HCI_EVENT_DATA*)GKI_getbuf(sizeof(tNFA_HCI_EVENT_DATA));
   if (p_msg != NULL) {
     p_msg->nv_write.hdr.event = NFA_HCI_RSP_NV_WRITE_EVT;

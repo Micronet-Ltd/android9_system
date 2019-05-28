@@ -117,7 +117,7 @@
 /* Option to guarantee no preemption during timer expiration (most system don't
  * need this) */
 #ifndef GKI_TIMER_LIST_NOPREEMPT
-#define GKI_TIMER_LIST_NOPREEMPT FALSE
+#define GKI_TIMER_LIST_NOPREEMPT false
 #endif
 
 /******************************************************************************
@@ -193,7 +193,7 @@
 
 /* The buffer corruption check flag. */
 #ifndef GKI_ENABLE_BUF_CORRUPTION_CHECK
-#define GKI_ENABLE_BUF_CORRUPTION_CHECK TRUE
+#define GKI_ENABLE_BUF_CORRUPTION_CHECK true
 #endif
 
 /* The GKI severe error macro. */
@@ -212,7 +212,7 @@
 #endif
 
 #ifndef GKI_SEND_MSG_FROM_ISR
-#define GKI_SEND_MSG_FROM_ISR FALSE
+#define GKI_SEND_MSG_FROM_ISR false
 #endif
 
 #endif /* GKI_TARGET_H */

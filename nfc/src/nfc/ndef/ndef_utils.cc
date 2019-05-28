@@ -22,8 +22,8 @@
  *  and build NFC Data Exchange Format (NDEF) messages
  *
  ******************************************************************************/
-#include "ndef_utils.h"
 #include <string.h>
+#include "ndef_utils.h"
 
 /*******************************************************************************
 **
@@ -67,7 +67,7 @@ static void shiftup(uint8_t* p_dest, uint8_t* p_src, uint32_t len) {
 **
 ** Description      This function validates an NDEF message.
 **
-** Returns          TRUE if all OK, or FALSE if the message is invalid.
+** Returns          true if all OK, or false if the message is invalid.
 **
 *******************************************************************************/
 tNDEF_STATUS NDEF_MsgValidate(uint8_t* p_msg, uint32_t msg_len,
@@ -691,7 +691,7 @@ uint8_t* NDEF_RecGetType(uint8_t* p_rec, uint8_t* p_tnf, uint8_t* p_type_len) {
 
   /* At this point, p_rec points to the start of the type field.  */
   *p_type_len = type_len;
-  *p_tnf = rec_hdr & NDEF_TNF_MASK;
+  *p_tnf = rec_hdr& NDEF_TNF_MASK;
 
   if (type_len == 0)
     return (NULL);
@@ -896,7 +896,7 @@ tNDEF_STATUS NDEF_MsgAppendPayload(uint8_t* p_msg, uint32_t max_size,
                                    uint32_t* p_cur_size, uint8_t* p_rec,
                                    uint8_t* p_add_pl, uint32_t add_pl_len) {
   uint32_t prev_paylen, new_paylen;
-  uint8_t *p_prev_pl, *pp;
+  uint8_t* p_prev_pl, *pp;
   uint8_t incr_lenfld = 0;
   uint8_t type_len, id_len;
 
@@ -978,7 +978,7 @@ tNDEF_STATUS NDEF_MsgReplacePayload(uint8_t* p_msg, uint32_t max_size,
                                     uint32_t* p_cur_size, uint8_t* p_rec,
                                     uint8_t* p_new_pl, uint32_t new_pl_len) {
   uint32_t prev_paylen;
-  uint8_t *p_prev_pl, *pp;
+  uint8_t* p_prev_pl, *pp;
   uint32_t paylen_delta;
   uint8_t type_len, id_len;
 
@@ -1087,7 +1087,7 @@ tNDEF_STATUS NDEF_MsgReplaceType(uint8_t* p_msg, uint32_t max_size,
                                  uint32_t* p_cur_size, uint8_t* p_rec,
                                  uint8_t* p_new_type, uint8_t new_type_len) {
   uint8_t typelen_delta;
-  uint8_t *p_prev_type, prev_type_len;
+  uint8_t* p_prev_type, prev_type_len;
   uint8_t* pp;
 
   /* Skip header */
@@ -1156,7 +1156,7 @@ tNDEF_STATUS NDEF_MsgReplaceId(uint8_t* p_msg, uint32_t max_size,
                                uint32_t* p_cur_size, uint8_t* p_rec,
                                uint8_t* p_new_id, uint8_t new_id_len) {
   uint8_t idlen_delta;
-  uint8_t *p_prev_id, *p_idlen_field;
+  uint8_t* p_prev_id, *p_idlen_field;
   uint8_t prev_id_len, type_len;
   uint8_t* pp;
 
@@ -1242,14 +1242,14 @@ tNDEF_STATUS NDEF_MsgReplaceId(uint8_t* p_msg, uint32_t max_size,
 ** Description      This function removes the record at the given
 **                  index in the given NDEF message.
 **
-** Returns          TRUE if OK, FALSE if the index was invalid
+** Returns          true if OK, false if the index was invalid
 **                  *p_cur_size is updated
 **
 *******************************************************************************/
 tNDEF_STATUS NDEF_MsgRemoveRec(uint8_t* p_msg, uint32_t* p_cur_size,
                                int32_t index) {
   uint8_t* p_rec = NDEF_MsgGetRecByIndex(p_msg, index);
-  uint8_t *pNext, *pPrev;
+  uint8_t* pNext, *pPrev;
 
   if (!p_rec) return (NDEF_REC_NOT_FOUND);
 
@@ -1312,7 +1312,7 @@ tNDEF_STATUS NDEF_MsgCopyAndDechunk(uint8_t* p_src, uint32_t src_len,
   uint32_t out_len, max_out_len;
   uint8_t* p_rec;
   uint8_t* p_prev_rec = p_dest;
-  uint8_t *p_type, *p_id, *p_pay;
+  uint8_t* p_type, *p_id, *p_pay;
   uint8_t type_len, id_len, tnf;
   uint32_t pay_len;
   tNDEF_STATUS status;

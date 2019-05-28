@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015 - 2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 /******************************************************************************
  *
@@ -26,6 +45,7 @@
 #include <hardware/nfc.h>
 #include "data_types.h"
 #include "nfc_hal_target.h"
+#include "hal_nxpnfc.h"
 
 typedef uint8_t tHAL_NFC_STATUS;
 typedef void(tHAL_NFC_STATUS_CBACK)(tHAL_NFC_STATUS status);
@@ -48,6 +68,10 @@ typedef bool(tHAL_API_PREDISCOVER)(void);
 typedef void(tHAL_API_CONTROL_GRANTED)(void);
 typedef void(tHAL_API_POWER_CYCLE)(void);
 typedef uint8_t(tHAL_API_GET_MAX_NFCEE)(void);
+#if (NXP_EXTNS == TRUE)
+typedef int(tHAL_API_IOCTL)(long arg, void* p_data);
+typedef int(tHAL_API_GET_FW_DWNLD_FLAG)(uint8_t* fwDnldRequest);
+#endif
 
 typedef struct {
   tHAL_API_INITIALIZE* initialize;
@@ -60,9 +84,19 @@ typedef struct {
   tHAL_API_CONTROL_GRANTED* control_granted;
   tHAL_API_POWER_CYCLE* power_cycle;
   tHAL_API_GET_MAX_NFCEE* get_max_ee;
-
+#if (NXP_EXTNS == TRUE)
+  tHAL_API_IOCTL* ioctl;
+  tHAL_API_GET_FW_DWNLD_FLAG* check_fw_dwnld_flag;
+#endif
 } tHAL_NFC_ENTRY;
 
+#if (NXP_EXTNS == TRUE)
+typedef struct {
+  tHAL_NFC_ENTRY* hal_entry_func;
+  uint8_t boot_mode;
+  bool    isLowRam;
+} tHAL_NFC_CONTEXT;
+#endif
 /*******************************************************************************
 ** HAL API Function Prototypes
 *******************************************************************************/

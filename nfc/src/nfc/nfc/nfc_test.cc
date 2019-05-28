@@ -24,12 +24,12 @@
  *
  ******************************************************************************/
 #include <string.h>
-#include "bt_types.h"
 #include "gki.h"
 #include "nfc_target.h"
+#include "bt_types.h"
 
-#include "nci_hmsgs.h"
 #include "nfc_int.h"
+#include "nci_hmsgs.h"
 
 /****************************************************************************
 ** Declarations

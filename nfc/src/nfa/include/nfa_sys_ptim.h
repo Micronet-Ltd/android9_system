@@ -37,6 +37,7 @@ typedef struct {
   uint8_t timer_id;         /* GKI timer id */
 } tPTIM_CB;
 
+
 /*****************************************************************************
 **  Function Declarations
 *****************************************************************************/
@@ -87,5 +88,6 @@ extern void nfa_sys_ptim_start_timer(tPTIM_CB* p_cb, TIMER_LIST_ENT* p_tle,
 **
 *******************************************************************************/
 extern void nfa_sys_ptim_stop_timer(tPTIM_CB* p_cb, TIMER_LIST_ENT* p_tle);
+
 
 #endif /* NFA_SYS_PTIM_H */

@@ -18,6 +18,26 @@
 
 /******************************************************************************
  *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
+
+/******************************************************************************
+ *
  *  Entry point for NFC_TASK
  *
  ******************************************************************************/
@@ -27,13 +47,12 @@
 #include <base/logging.h>
 
 #include "nfc_target.h"
-
 #include "bt_types.h"
-#include "ce_int.h"
 #include "gki.h"
-#include "nci_hmsgs.h"
 #include "nfc_int.h"
+#include "nci_hmsgs.h"
 #include "rw_int.h"
+#include "ce_int.h"
 #if (NFC_RW_ONLY == FALSE)
 #include "llcp_int.h"
 #else
@@ -114,7 +133,13 @@ void nfc_process_timer_evt(void) {
   while ((nfc_cb.timer_queue.p_first) && (!nfc_cb.timer_queue.p_first->ticks)) {
     p_tle = nfc_cb.timer_queue.p_first;
     GKI_remove_from_timer_list(&nfc_cb.timer_queue, p_tle);
-
+#if(NXP_EXTNS == TRUE)
+    /*Ignore expired timer when NFC off is in progress*/
+    if(nfc_cb.nfc_state == NFC_STATE_W4_HAL_CLOSE ||
+       nfc_cb.nfc_state == NFC_STATE_NONE){
+        return;
+    }
+#endif
     switch (p_tle->event) {
       case NFC_TTYPE_NCI_WAIT_RSP:
         nfc_ncif_cmd_timeout();
@@ -123,13 +148,40 @@ void nfc_process_timer_evt(void) {
       case NFC_TTYPE_WAIT_2_DEACTIVATE:
         nfc_wait_2_deactivate_timeout();
         break;
-      case NFC_TTYPE_WAIT_MODE_SET_NTF:
-        nfc_mode_set_ntf_timeout();
+      case NFC_TTYPE_WAIT_SETMODE_NTF:
+        nfc_modeset_ntf_timeout();
         break;
+#if (NXP_EXTNS == TRUE)
+      case NFC_TTYPE_NCI_WAIT_DATA_NTF: {
+        if (get_i2c_fragmentation_enabled() == I2C_FRAGMENATATION_ENABLED) {
+          nfc_cb.i2c_data_t.nci_cmd_channel_busy = 0;
+          nfc_cb.i2c_data_t.data_stored = 0;
+        }
+        nfc_ncif_credit_ntf_timeout();
+        break;
+      }
+      case NFC_TYPE_NCI_WAIT_SETMODE_NTF:
+          if(nfcFL.eseFL._ESE_DUAL_MODE_PRIO_SCHEME ==
+                  nfcFL.eseFL._ESE_WIRED_MODE_RESUME) {
+              nfc_ncif_modeSet_Ntf_timeout();
+          }
+          break;
+      case NFC_TTYPE_NCI_WAIT_RF_FIELD_NTF:
+          if(nfcFL.eseFL._ESE_DUAL_MODE_PRIO_SCHEME ==
+                  nfcFL.eseFL._ESE_WIRED_MODE_RESUME) {
+              nfc_ncif_onWiredModeHold_timeout();
+          }
+          break;
+      case NFC_TTYPE_LISTEN_ACTIVATION: {
+        extern uint8_t sListenActivated;
+        sListenActivated = false;
+        nfc_ncif_cmd_timeout();
+      } break;
+#endif
+
       default:
-        DLOG_IF(INFO, nfc_debug_enabled)
-            << StringPrintf("nfc_process_timer_evt: timer:0x%p event (0x%04x)",
-                            p_tle, p_tle->event);
+        DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfc_process_timer_evt: timer:0x%p event (0x%04x)",
+                         p_tle, p_tle->event);
         DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
             "nfc_process_timer_evt: unhandled timer event (0x%04x)",
             p_tle->event);
@@ -270,10 +322,27 @@ void nfc_process_quick_timer_evt(void) {
       case NFC_TTYPE_P2P_PRIO_LOGIC_CLEANUP:
         nfa_dm_p2p_prio_logic_cleanup();
         break;
+      case NFC_TTYPE_P2P_PRIO_LOGIC_DEACT_NTF_TIMEOUT:
+        nfa_dm_deact_ntf_timeout();
+        break;
 #if (NFC_RW_ONLY == FALSE)
       case NFC_TTYPE_CE_T4T_UPDATE:
         ce_t4t_process_timeout(p_tle);
         break;
+#endif
+#if (NXP_EXTNS == TRUE)
+      case NFC_TTYPE_PWR_LINK_RSP:
+          if(nfcFL.eseFL._ESE_DUAL_MODE_PRIO_SCHEME ==
+                  nfcFL.eseFL._ESE_WIRED_MODE_RESUME) {
+              nfc_ncif_pwr_link_rsp_timeout();
+          }
+          break;
+      case NFC_TTYPE_SET_MODE_RSP:
+          if(nfcFL.eseFL._ESE_DUAL_MODE_PRIO_SCHEME ==
+                  nfcFL.eseFL._ESE_WIRED_MODE_RESUME) {
+              nfc_ncif_modeSet_rsp_timeout();
+          }
+          break;
 #endif
       default:
         DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
@@ -350,17 +419,24 @@ uint32_t nfc_task(__attribute__((unused)) uint32_t arg) {
   /* main loop */
   while (true) {
     event = GKI_wait(0xFFFF, 0);
-    if (event == EVENT_MASK(GKI_SHUTDOWN_EVT)) {
+    if (event == EVENT_MASK(GKI_UNKNOWN_TASK_EVT)) {
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("GKI_UNKNOWN_TASK_EVT");
+      break;
+    } else if (event == EVENT_MASK(GKI_SHUTDOWN_EVT)) {
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("GKI_SHUTDOWN_EVT");
       break;
     }
     /* Handle NFC_TASK_EVT_TRANSPORT_READY from NFC HAL */
     if (event & NFC_TASK_EVT_TRANSPORT_READY) {
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("NFC_TASK got NFC_TASK_EVT_TRANSPORT_READY.");
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFC_TASK got NFC_TASK_EVT_TRANSPORT_READY.");
 
       /* Reset the NFC controller. */
       nfc_set_state(NFC_STATE_CORE_INIT);
+#if (NXP_EXTNS == TRUE)
+      nci_snd_core_reset(NCI_RESET_TYPE_KEEP_CFG);
+#else
       nci_snd_core_reset(NCI_RESET_TYPE_RESET_CFG);
+#endif
     }
 
     if (event & NFC_MBOX_EVT_MASK) {
@@ -391,8 +467,8 @@ uint32_t nfc_task(__attribute__((unused)) uint32_t arg) {
             break;
 
           default:
-            DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-                "nfc_task: unhandle mbox message, event=%04x", p_msg->event);
+            DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfc_task: unhandle mbox message, event=%04x",
+                             p_msg->event);
             break;
         }
 
@@ -424,7 +500,5 @@ uint32_t nfc_task(__attribute__((unused)) uint32_t arg) {
   }
 
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfc_task terminated");
-
-  GKI_exit_task(GKI_get_taskid());
   return 0;
 }

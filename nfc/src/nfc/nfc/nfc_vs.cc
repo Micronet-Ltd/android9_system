@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 /******************************************************************************
  *
@@ -93,8 +112,7 @@ tNFC_STATUS NFC_RegVSCback(bool is_register, tNFC_VS_CBACK* p_cback) {
 tNFC_STATUS NFC_SendRawVsCommand(NFC_HDR* p_data, tNFC_VS_CBACK* p_cback) {
   /* Validate parameters */
   if (p_data == NULL || (p_data->len > NCI_MAX_VSC_SIZE)) {
-    LOG(ERROR) << StringPrintf("buffer offset must be >= %d",
-                               NCI_VSC_MSG_HDR_SIZE);
+    LOG(ERROR) << StringPrintf("buffer offset must be >= %d", NCI_VSC_MSG_HDR_SIZE);
     if (p_data) GKI_freebuf(p_data);
     return NFC_STATUS_INVALID_PARAM;
   }
@@ -139,8 +157,7 @@ tNFC_STATUS NFC_SendVsCommand(uint8_t oid, NFC_HDR* p_data,
   /* Validate parameters */
   if ((p_data == NULL) || (p_data->offset < NCI_VSC_MSG_HDR_SIZE) ||
       (p_data->len > NCI_MAX_VSC_SIZE)) {
-    LOG(ERROR) << StringPrintf("buffer offset must be >= %d",
-                               NCI_VSC_MSG_HDR_SIZE);
+    LOG(ERROR) << StringPrintf("buffer offset must be >= %d", NCI_VSC_MSG_HDR_SIZE);
     if (p_data) GKI_freebuf(p_data);
     return NFC_STATUS_INVALID_PARAM;
   }

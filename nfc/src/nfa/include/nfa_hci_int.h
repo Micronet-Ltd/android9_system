@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 /******************************************************************************
  *
@@ -25,23 +44,48 @@
 #define NFA_HCI_INT_H
 
 #include <string>
-#include "nfa_ee_api.h"
 #include "nfa_hci_api.h"
 #include "nfa_sys.h"
+#include "nfa_ee_api.h"
+
 extern uint8_t HCI_LOOPBACK_DEBUG;
 
 /* NFA HCI DEBUG states */
 #define NFA_HCI_DEBUG_ON 0x01
 #define NFA_HCI_DEBUG_OFF 0x00
+
 /*****************************************************************************
 **  Constants and data types
 *****************************************************************************/
 
 #define NFA_HCI_HOST_ID_UICC0 0x02 /* Host ID for UICC 0 */
+
+#define NFA_HCI_HOST_ID_UICC0_NCI2 0x80 /* Host ID for UICC 0 */
 /* Lost host specific gate */
 #define NFA_HCI_LAST_HOST_SPECIFIC_GATE 0xEF
 
 #define NFA_HCI_SESSION_ID_LEN 8 /* HCI Session ID length */
+
+#if (NXP_EXTNS == TRUE)
+/* HCI Host Type length */
+#define NFA_HCI_HOST_TYPE_LEN 2
+/* HCI controller ETSI Version 9 */
+#define NFA_HCI_CONTROLLER_VERSION_9 9
+/* HCI controller ETSI Version 12 */
+#define NFA_HCI_CONTROLLER_VERSION_12 12
+/* Host ID for UICC 1 */
+#define NFA_HCI_HOST_ID_UICC1 0x81
+/* Host ID for ESE    */
+#define NFA_HCI_HOST_ID_ESE 0xC0
+/* Bit Mask to indicate session ID poll is done or not*/
+#define NFA_HCI_SESSION_ID_MASK 0x0100
+/* Bit mask to indicate ETSI12 config done or not*/
+#define NFA_HCI_NFCEE_CONFIG_MASK 0x0200
+/* event to set the nfcee config bit*/
+#define NFA_HCI_SET_CONFIG_EVENT 0x01
+/* event to clear the nfcee config bit*/
+#define NFA_HCI_CLEAR_CONFIG_EVENT 0x02
+#endif
 
 /* HCI SW Version number                       */
 #define NFA_HCI_VERSION_SW 0x090000
@@ -55,7 +99,8 @@ extern uint8_t HCI_LOOPBACK_DEBUG;
 #define NFA_HCI_VERSION 90
 
 /* NFA HCI states */
-#define NFA_HCI_STATE_DISABLED 0x00 /* HCI is disabled  */
+/* HCI is disabled  */
+#define NFA_HCI_STATE_DISABLED 0x00
 /* HCI performing Initialization sequence */
 #define NFA_HCI_STATE_STARTUP 0x01
 /* HCI is waiting for initialization of other host in the network */
@@ -72,8 +117,39 @@ extern uint8_t HCI_LOOPBACK_DEBUG;
 /* HCI is waiting for initialization of other host in the network after restore
  */
 #define NFA_HCI_STATE_RESTORE_NETWK_ENABLE 0x08
+#if (NXP_EXTNS == TRUE)
+/* HCI is waiting for NFCEE initialization */
+#define NFA_HCI_STATE_NFCEE_ENABLE 0x09
+#define NFA_HCI_STATE_EE_RECOVERY 0x0A
+#endif
 
-#define NFA_HCI_STATE_EE_RECOVERY 0x09
+#if (NXP_EXTNS == TRUE)
+#define NFA_HCI_MAX_RSP_WAIT_TIME 0x0C
+/* After the reception of WTX, maximum response timeout value is 30 sec */
+#define NFA_HCI_CHAIN_PKT_RSP_TIMEOUT 30000
+/* Wait time to give response timeout to application if WTX not received*/
+#define NFA_HCI_WTX_RESP_TIMEOUT 3000
+/* time out for wired mode response after RF deativation */
+#define NFA_HCI_DWP_RSP_WAIT_TIMEOUT 2000
+/* time out for wired session aborted(0xE6 ntf) due to SWP switched to UICC*/
+#define NFA_HCI_DWP_SESSION_ABORT_TIMEOUT 5000
+/* delay between session ID poll to check if the reset host is initilized or not
+ */
+#define NFA_HCI_SESSION_ID_POLL_DELAY 50
+/* retry count for session ID poll*/
+#define NFA_HCI_MAX_SESSION_ID_RETRY_CNT 0x0A
+/* NFCEE disc timeout default value in sec*/
+#define NFA_HCI_NFCEE_DISC_TIMEOUT 0x02
+/*  NXP specific events */
+/* Event to read the number of NFCEE configured in NFCC*/
+#define NFA_HCI_GET_NUM_NFCEE_CONFIGURED 0xF1
+/* Event to read the session ID of all the Secure Element*/
+#define NFA_HCI_READ_SESSIONID 0xF2
+/* Event to start ETSI 12 configuration*/
+#define NFA_HCI_INIT_NFCEE_CONFIG 0xF3
+/* NFCEE ETSI 12 configuration complete*/
+#define NFA_HCI_NFCEE_CONFIG_COMPLETE 0xF9
+#endif
 
 typedef uint8_t tNFA_HCI_STATE;
 
@@ -104,12 +180,23 @@ enum {
   NFA_HCI_API_ADD_STATIC_PIPE_EVT, /* Add a static pipe */
   NFA_HCI_API_SEND_CMD_EVT,        /* Send command via pipe */
   NFA_HCI_API_SEND_RSP_EVT,        /* Application Response to a command */
-  NFA_HCI_API_SEND_EVENT_EVT,      /* Send event via pipe */
+#if (NXP_EXTNS == TRUE)
+  NFA_HCI_API_CONFIGURE_EVT, /* Configure NFCEE as per ETSI 12 standards */
+#endif
+  NFA_HCI_API_SEND_EVENT_EVT, /* Send event via pipe */
 
   NFA_HCI_RSP_NV_READ_EVT,  /* Non volatile read complete event */
   NFA_HCI_RSP_NV_WRITE_EVT, /* Non volatile write complete event */
   NFA_HCI_RSP_TIMEOUT_EVT,  /* Timeout to response for the HCP Command packet */
   NFA_HCI_CHECK_QUEUE_EVT
+#if (NXP_EXTNS == TRUE)
+  ,
+  NFA_HCI_SESSION_ID_POLL_DELAY_TIMEOUT_EVT /*timeout event to read session id
+                                               on timeout*/
+  ,
+  NFA_HCI_NFCEE_DISCOVER_TIMEOUT_EVT /*timeout event for waiting for all
+                                        configured nfcee to be discovered*/
+#endif
 };
 
 #define NFA_HCI_FIRST_API_EVENT NFA_HCI_API_REGISTER_APP_EVT
@@ -235,8 +322,22 @@ typedef struct {
   uint8_t* p_evt_buf;
   uint16_t rsp_len;
   uint8_t* p_rsp_buf;
+#if (NXP_EXTNS == TRUE)
+  uint32_t rsp_timeout;
+#else
   uint16_t rsp_timeout;
+#endif
 } tNFA_HCI_API_SEND_EVENT_EVT;
+
+#if (NXP_EXTNS == TRUE)
+/* data type for tNFA_HCI_API_CONFIGURE_EVT */
+typedef struct {
+  NFC_HDR hdr;
+  uint16_t config_nfcee_event;
+} tNFA_HCI_API_CONFIGURE_EVT;
+
+typedef uint16_t tNFA_CONFIG_STATE;
+#endif
 
 /* data type for NFA_HCI_API_SEND_CMD_EVT */
 typedef struct {
@@ -309,6 +410,11 @@ typedef union {
   /* Internal events */
   tNFA_HCI_RSP_NV_READ_EVT nv_read;   /* Read Non volatile data */
   tNFA_HCI_RSP_NV_WRITE_EVT nv_write; /* Write Non volatile data */
+
+#if (NXP_EXTNS == TRUE)
+  tNFA_HCI_API_CONFIGURE_EVT
+      config_info; /* Configuration of NFCEE for ETSI12 */
+#endif
 } tNFA_HCI_EVENT_DATA;
 
 /*****************************************************************************
@@ -355,11 +461,21 @@ typedef struct {
   uint8_t hci_version;     /* HCI Version */
 } tNFA_ID_MGMT_GATE_INFO;
 
+#if (NXP_EXTNS == TRUE)
+#define NFA_HCI_FL_CONN_PIPE 0x01
+#define NFA_HCI_FL_APDU_PIPE 0x02
+#define NFA_HCI_FL_OTHER_PIPE 0x04
+#define NFA_HCI_CONN_UICC_PIPE 0x0A
+#define NFA_HCI_CONN_ESE_PIPE 0x16
+#define NFA_HCI_APDU_PIPE 0x19
+#define NFA_HCI_CONN_UICC2_PIPE 0x23 /*Connectivity pipe no of UICC2*/
+#define NFA_HCI_INIT_MAX_RETRY 20
+#endif
 /* NFA HCI control block */
 typedef struct {
-  tNFA_HCI_STATE hci_state; /* state of the HCI */
-  uint8_t num_nfcee;        /* Number of NFCEE ID Discovered */
-  tNFA_EE_INFO ee_info[NFA_HCI_MAX_HOST_IN_NETWORK]; /*NFCEE ID Info*/
+  tNFA_HCI_STATE hci_state;   /* state of the HCI */
+  uint8_t num_nfcee;          /* Number of NFCEE ID Discovered */
+  tNFA_EE_INFO ee_info[NFA_HCI_MAX_HOST_IN_NETWORK];    /*NFCEE ID Info*/
   uint8_t num_ee_dis_req_ntf; /* Number of ee discovery request ntf received */
   uint8_t num_hot_plug_evts;  /* Number of Hot plug events received after ee
                                  discovery disable ntf */
@@ -393,8 +509,55 @@ typedef struct {
   uint8_t msg_data[NFA_MAX_HCI_EVENT_LEN]; /* For segmentation - the combined
                                               message data */
   uint8_t* p_msg_data; /* For segmentation - reassembled message */
-  uint8_t type;        /* Instruction type of incoming message */
-  uint8_t inst;        /* Instruction of incoming message */
+#if (NXP_EXTNS == TRUE)
+  uint8_t assembling_flags; /* the flags to keep track of assembling status*/
+  uint8_t assembly_failed_flags; /* the flags to keep track of failed assembly*/
+  uint8_t* p_evt_data;           /* For segmentation - reassembled event data */
+  uint16_t evt_len; /* For segmentation - length of the combined event data */
+  uint16_t max_evt_len; /* Maximum reassembled message size */
+  uint8_t evt_data[NFA_MAX_HCI_EVENT_LEN]; /* For segmentation - the combined
+                                              event data */
+  uint8_t type_evt;   /* Instruction type of incoming message */
+  uint8_t inst_evt;   /* Instruction of incoming message */
+  uint8_t type_msg;   /* Instruction type of incoming message */
+  uint8_t inst_msg;   /* Instruction of incoming message */
+  uint8_t host_count; /* no of Hosts ETSI 12 compliant */
+  uint8_t host_id[NFA_HCI_MAX_NO_HOST_ETSI12]; /* Host id ETSI 12 compliant */
+  uint8_t host_controller_version; /* no of host controller version */
+  uint8_t current_nfcee;           /* current Nfcee under execution  */
+  bool IsHciTimerChanged;
+  bool IsWiredSessionAborted;
+  uint32_t hciResponseTimeout;
+  bool IsChainedPacket;
+  bool bIsHciResponseTimedout;
+  uint16_t hci_packet_len;
+  bool IsEventAbortSent;
+  bool IsLastEvtAbortFailed;
+  bool w4_nfcee_enable;
+  bool IsApduPipeStatusNotCorrect;
+  tNFA_HCI_EVENT_SENT evt_sent;
+  struct {
+    tNFA_CONFIG_STATE
+        config_nfcee_state;   /*state change during config nfcee handling*/
+    uint8_t session_id_retry; /*retry count for session ID*/
+    tNFA_HANDLE host_cb[NFA_HCI_MAX_HOST_IN_NETWORK]; /*host_cb which stores
+                                                         information on config
+                                                         complete ,session ID
+                                                         poll and other
+                                                         information*/
+    bool discovery_stopped; /*discovery stopped during config nfcee process*/
+    bool nfc_init_state;    /*handling clear all pipe*/
+  } nfcee_cfg;
+
+  uint32_t max_hci_session_id_read_count; /*Count for maximum  session id retry
+                                             value */
+  uint32_t
+      max_nfcee_disc_timeout; /*Config file timeout value for all the NFCEE to
+                                 be discovered */
+  tNFA_EE_INFO hci_ee_info[NFA_HCI_MAX_HOST_IN_NETWORK];
+#endif
+  uint8_t type; /* Instruction type of incoming message */
+  uint8_t inst; /* Instruction of incoming message */
 
   BUFFER_Q hci_api_q;            /* Buffer Q to hold incoming API commands */
   BUFFER_Q hci_host_reset_api_q; /* Buffer Q to hold incoming API commands to a
@@ -405,7 +568,7 @@ typedef struct {
   uint16_t rsp_buf_size; /* Maximum size of APDU buffer */
   uint8_t* p_rsp_buf;    /* Buffer to hold response to sent event */
   struct                 /* Persistent information for Device Host */
-  {
+      {
     char reg_app_names[NFA_HCI_MAX_APP_CB][NFA_MAX_HCI_APP_NAME_LEN + 1];
 
     tNFA_HCI_DYN_GATE dyn_gates[NFA_HCI_MAX_GATE_CB];
@@ -415,6 +578,9 @@ typedef struct {
     tNFA_ADMIN_GATE_INFO admin_gate;
     tNFA_LINK_MGMT_GATE_INFO link_mgmt_gate;
     tNFA_ID_MGMT_GATE_INFO id_mgmt_gate;
+#if (NXP_EXTNS == TRUE)
+    uint8_t retry_cnt;
+#endif
   } cfg;
 
 } tNFA_HCI_CB;
@@ -439,6 +605,21 @@ extern void nfa_hci_startup_complete(tNFA_STATUS status);
 extern void nfa_hci_startup(void);
 extern void nfa_hci_restore_default_config(uint8_t* p_session_id);
 extern void nfa_hci_enable_one_nfcee(void);
+#if (NXP_EXTNS == TRUE)
+extern void nfa_hci_release_transcieve();
+extern void nfa_hci_network_enable(void);
+extern tNFA_STATUS nfa_hciu_reset_session_id(tNFA_VSC_CBACK* p_cback);
+extern tNFA_STATUS nfa_hciu_send_raw_cmd(uint8_t param_len, uint8_t* p_data,
+                                         tNFA_VSC_CBACK* p_cback);
+extern bool nfa_hciu_check_nfcee_poll_done(uint8_t host_id);
+extern bool nfa_hciu_check_nfcee_config_done(uint8_t host_id);
+extern void nfa_hciu_set_nfceeid_config_mask(uint8_t event, uint8_t host_id);
+extern void nfa_hciu_set_nfceeid_poll_mask(uint8_t event, uint8_t host_id);
+extern bool nfa_hciu_check_any_host_reset_pending();
+extern tNFA_STATUS nfa_hci_api_config_nfcee(uint8_t hostId);
+extern tNFA_STATUS nfa_hci_getApduAndConnectivity_PipeStatus();
+void nfa_hci_handle_clear_all_pipes_evt(uint8_t source_host);
+#endif
 
 /* Action functions in nfa_hci_act.c
 */

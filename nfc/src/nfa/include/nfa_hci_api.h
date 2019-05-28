@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 /******************************************************************************
  *
@@ -26,7 +45,9 @@
 #define NFA_HCI_API_H
 
 #include "nfa_api.h"
-
+#if (NXP_EXTNS == TRUE)
+#include "nfa_ee_api.h"
+#endif
 /*****************************************************************************
 **  Constants and data types
 *****************************************************************************/
@@ -44,8 +65,8 @@
 #define NFA_HCI_DEREGISTER_EVT 0x01
 /* Retrieved gates,pipes assoc. to application  */
 #define NFA_HCI_GET_GATE_PIPE_LIST_EVT 0x02
-#define NFA_HCI_ALLOCATE_GATE_EVT \
-  0x03 /* A generic gate allocated to the application  */
+/* A generic gate allocated to the application  */
+#define NFA_HCI_ALLOCATE_GATE_EVT 0x03
 #define NFA_HCI_DEALLOCATE_GATE_EVT \
   0x04 /* A generic gate is released                   */
 #define NFA_HCI_CREATE_PIPE_EVT \
@@ -84,7 +105,13 @@
 #define NFA_HCI_SET_REG_RSP_EVT 0x15
 /* A static pipe is added                       */
 #define NFA_HCI_ADD_STATIC_PIPE_EVT 0x16
-
+#if (NXP_EXTNS == TRUE)
+/**Event to read host type list*/
+#define NFA_HCI_HOST_TYPE_LIST_READ_EVT 0x17
+#define NFA_HCI_CONFIG_DONE_EVT \
+  0x18 /* Configure NFCEE                              */
+#define NFA_HCI_EE_RECOVERY_EVT 0x19
+#endif
 typedef uint8_t tNFA_HCI_EVT;
 
 /* Max application name length */
@@ -93,14 +120,28 @@ typedef uint8_t tNFA_HCI_EVT;
 #define NFA_MAX_HCI_CMD_LEN 255
 /* Max HCI event length */
 #define NFA_MAX_HCI_RSP_LEN 255
+#if (NXP_EXTNS == TRUE)
+/*
+ * increased the the buffer size, since as per HCI specification connectivity
+ * event may
+ * take up 271 bytes. (MAX AID length:16, MAX PARAMETERS length:255)
+ * */
 /* Max HCI event length */
 #define NFA_MAX_HCI_EVENT_LEN 300
+#else
+/* Max HCI event length */
+#define NFA_MAX_HCI_EVENT_LEN 260
+#endif
 /* Max HCI data length */
 #define NFA_MAX_HCI_DATA_LEN 260
 
 /* NFA HCI PIPE states */
 #define NFA_HCI_PIPE_CLOSED 0x00 /* Pipe is closed */
 #define NFA_HCI_PIPE_OPENED 0x01 /* Pipe is opened */
+
+ /* HCI Recovery status*/
+ #define NFA_HCI_EE_RECOVERY_STARTED 0x01
+ #define NFA_HCI_EE_RECOVERY_COMPLETED 0x02
 
 typedef uint8_t tNFA_HCI_PIPE_STATE;
 /* Dynamic pipe control block */
@@ -180,6 +221,9 @@ typedef struct {
 typedef struct {
   tNFA_STATUS status; /* Status of delete pipe operation */
   uint8_t pipe;       /* The dynamic pipe for delete operation */
+#if (NXP_EXTNS == TRUE)
+  uint8_t host; /* The host Id for delete pipe operation */
+#endif
 } tNFA_HCI_DELETE_PIPE;
 
 /* Data for NFA_HCI_HOST_LIST_EVT */
@@ -206,6 +250,9 @@ typedef struct {
   uint8_t evt_code;   /* HCP EVT id */
   uint16_t evt_len;   /* HCP EVT parameter length */
   uint8_t* p_evt_buf; /* HCP EVT Parameter */
+#if (NXP_EXTNS == TRUE)
+  uint8_t last_SentEvtType;
+#endif
 } tNFA_HCI_EVENT_RCVD;
 
 /* Data for NFA_HCI_CMD_RCVD_EVT */
@@ -240,6 +287,9 @@ typedef struct {
 /* Data for NFA_HCI_EVENT_SENT_EVT */
 typedef struct {
   tNFA_STATUS status; /* Status of Event send operation */
+#if (NXP_EXTNS == TRUE)
+  uint8_t evt_type;
+#endif
 } tNFA_HCI_EVENT_SENT;
 
 /* Data for NFA_HCI_ADD_STATIC_PIPE_EVT */
@@ -255,7 +305,23 @@ typedef struct {
   uint8_t data_len;   /* length of the registry parameter */
   uint8_t reg_data[NFA_MAX_HCI_DATA_LEN]; /* Registry parameter */
 } tNFA_HCI_REGISTRY;
-
+#if (NXP_EXTNS == TRUE)
+/* Data for tNFA_HCI_ADMIN_RSP_RCVD */
+typedef struct {
+  tNFA_STATUS status;     /* Status of command on Admin pipe */
+  uint8_t NoHostsPresent; /* No of Hosts compliant to ETSI 12 */
+  uint8_t HostIds[5];     /* Host Ids compliant to ETSI 12 */
+} tNFA_HCI_ADMIN_RSP_RCVD;
+/* Data for tNFA_HCI_CONFIG_RSP_RCVD */
+typedef struct {
+  tNFA_STATUS status; /* Status for ETSI12 config for NFCEE*/
+} tNFA_HCI_CONFIG_RSP_RCVD;
+#endif
+typedef struct {
+  tNFA_STATUS status;     /* Status of command on Admin pipe */
+  uint8_t host;
+} tNFA_HCI_EE_RECOVERY_EVT;
+/* Data for tNFA_HCI_CONFIG_RSP_RCVD */
 /* Union of all hci callback structures */
 typedef union {
   tNFA_HCI_REGISTER hci_register;          /* NFA_HCI_REGISTER_EVT           */
@@ -283,7 +349,16 @@ typedef union {
   tNFA_HCI_INIT hci_init;                  /* NFA_HCI_INIT_EVT               */
   tNFA_HCI_EXIT hci_exit;                  /* NFA_HCI_EXIT_EVT               */
   tNFA_HCI_ADD_STATIC_PIPE_EVT pipe_added; /* NFA_HCI_ADD_STATIC_PIPE_EVT    */
+#if (NXP_EXTNS == TRUE)
+  tNFA_HCI_ADMIN_RSP_RCVD admin_rsp_rcvd;   /* NFA_HCI_ADMIN_RSP_RCVD         */
+  tNFA_HCI_CONFIG_RSP_RCVD config_rsp_rcvd; /* NFA_HCI_CONFIG_RSP_RCVD       */
+  tNFA_HCI_EE_RECOVERY_EVT ee_recovery;
+#endif
 } tNFA_HCI_EVT_DATA;
+
+#if (NXP_EXTNS == TRUE)
+typedef enum { Wait = 0, Release } tNFA_HCI_TRANSCV_STATE;
+#endif
 
 /* NFA HCI callback */
 typedef void(tNFA_HCI_CBACK)(tNFA_HCI_EVT event, tNFA_HCI_EVT_DATA* p_data);
@@ -291,7 +366,6 @@ typedef void(tNFA_HCI_CBACK)(tNFA_HCI_EVT event, tNFA_HCI_EVT_DATA* p_data);
 /*****************************************************************************
 **  External Function Declarations
 *****************************************************************************/
-
 /*******************************************************************************
 **
 ** Function         NFA_HciRegister
@@ -465,22 +539,40 @@ extern tNFA_STATUS NFA_HciGetRegistry(tNFA_HANDLE hci_handle, uint8_t pipe,
 
 /*******************************************************************************
 **
-** Function         NFA_HciSendCommand
+** Function         NFA_HciSetRegistry
 **
-** Description      This function is called to send a command on a pipe created
-**                  by the application.
-**                  The app will be notified by NFA_HCI_CMD_SENT_EVT if an error
-**                  occurs.
+** Description      This function requests a peer host to set the desired
+**                  registry field value for the gate that the pipe is on.
+**
 **                  When the peer host responds,the app is notified with
-**                  NFA_HCI_RSP_RCVD_EVT
+**                  NFA_HCI_SET_REG_RSP_EVT or
+**                  if an error occurs in sending the command the app will be
+**                  notified by NFA_HCI_CMD_SENT_EVT
 **
 ** Returns          NFA_STATUS_OK if successfully initiated
 **                  NFA_STATUS_FAILED otherwise
 **
 *******************************************************************************/
-extern tNFA_STATUS NFA_HciSendCommand(tNFA_HANDLE hci_handle, uint8_t pipe,
-                                      uint8_t cmd_code, uint16_t cmd_size,
+extern tNFA_STATUS NFA_HciSetRegistry(tNFA_HANDLE hci_handle, uint8_t pipe,
+                                      uint8_t reg_inx, uint8_t data_size,
                                       uint8_t* p_data);
+
+/*******************************************************************************
+**
+** Function         NFA_HciSendResponse
+**
+** Description      This function is called to send a response on a pipe created
+**                  by the application.
+**                  The app will be notified by NFA_HCI_RSP_SENT_EVT if an error
+**                  occurs.
+**
+** Returns          NFA_STATUS_OK if successfully initiated
+**                  NFA_STATUS_FAILED otherwise
+**
+*******************************************************************************/
+extern tNFA_STATUS NFA_HciSendResponse(tNFA_HANDLE hci_handle, uint8_t pipe,
+                                       uint8_t response, uint8_t data_size,
+                                       uint8_t* p_data);
 
 /*******************************************************************************
 **
@@ -511,7 +603,12 @@ extern tNFA_STATUS NFA_HciSendCommand(tNFA_HANDLE hci_handle, uint8_t pipe,
 tNFA_STATUS NFA_HciSendEvent(tNFA_HANDLE hci_handle, uint8_t pipe,
                              uint8_t evt_code, uint16_t evt_size,
                              uint8_t* p_data, uint16_t rsp_size,
-                             uint8_t* p_rsp_buf, uint16_t rsp_timeout);
+                             uint8_t* p_rsp_buf,
+#if (NXP_EXTNS == TRUE)
+                             uint32_t rsp_timeout);
+#else
+                             uint16_t rsp_timeout);
+#endif
 
 /*******************************************************************************
 **
@@ -563,6 +660,18 @@ extern tNFA_STATUS NFA_HciDeletePipe(tNFA_HANDLE hci_handle, uint8_t pipe);
 extern tNFA_STATUS NFA_HciAddStaticPipe(tNFA_HANDLE hci_handle, uint8_t host,
                                         uint8_t gate, uint8_t pipe);
 
+#if (NXP_EXTNS == TRUE)
+/*******************************************************************************
+**
+** Function         NFA_MW_Fwdnlwd_Recovery
+**
+** Description      This function is called to make the MW_RCVRY_FW_DNLD_ALLOWED
+*true
+**                  not allowing the FW download while MW recovery.
+**
+*******************************************************************************/
+extern bool NFA_MW_Fwdnlwd_Recovery(bool mw_fwdnld_recovery);
+#endif
 /*******************************************************************************
 **
 ** Function         NFA_HciDebug
@@ -570,6 +679,58 @@ extern tNFA_STATUS NFA_HciAddStaticPipe(tNFA_HANDLE hci_handle, uint8_t host,
 ** Description      Debug function.
 **
 *******************************************************************************/
-extern void NFA_HciDebug(uint8_t action, uint8_t size, uint8_t* p_data);
+void NFA_HciDebug(uint8_t action, uint8_t size, uint8_t* p_data);
+#if (NXP_EXTNS == TRUE)
+extern tNFA_STATUS NFA_HciSendHostTypeListCommand(tNFA_HANDLE hci_handle);
+extern tNFA_STATUS NFA_HciConfigureNfceeETSI12();
+/*******************************************************************************
+**
+** Function         NFA_IsPipeStatusNotCorrect
+**
+** Description      Checks and resets pipe status
+**
+** Returns          TRUE/FALSE
+**
+*******************************************************************************/
+extern bool NFA_IsPipeStatusNotCorrect();
+#endif
+#if (NXP_EXTNS == TRUE)
+/*******************************************************************************
+**
+** Function         NFA_HciW4eSETransaction_Complete
+**
+** Description      This function is called to wait for eSE transaction
+**                  to complete before NFCC shutdown or NFC service turn OFF
+**
+** Returns          None
+**
+*******************************************************************************/
+extern void NFA_HciW4eSETransaction_Complete(tNFA_HCI_TRANSCV_STATE type);
+
+/*******************************************************************************
+**
+** Function         nfa_hci_handle_nfcee_config_evt
+**
+** Description      This function handles clear all pipe and NFCEE config.
+**
+**
+** Returns          None
+**
+*******************************************************************************/
+extern void nfa_hci_handle_nfcee_config_evt(uint16_t event);
+
+/*******************************************************************************
+**
+** Function         nfa_hci_clear_all_pipe_ntf_cb
+**
+** Description      Function to handle  cmd rsp of clear all pipe
+**
+** Returns          None
+**
+*******************************************************************************/
+extern void nfa_hci_nfcee_config_rsp_handler(tNFA_HCI_EVT event,
+                                             tNFA_HCI_EVT_DATA* p_evt);
+
+#endif
 
 #endif /* NFA_P2P_API_H */

@@ -15,7 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
-
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 /******************************************************************************
  *
  *  This file contains the NFA HCI related definitions from the
@@ -29,6 +47,9 @@
 /* Static gates */
 #define NFA_HCI_LOOP_BACK_GATE 0x04
 #define NFA_HCI_IDENTITY_MANAGEMENT_GATE 0x05
+#if (NXP_EXTNS == TRUE)
+#define NFC_HCI_DEFAULT_DEST_GATE 0XF0
+#endif
 
 #define NFA_HCI_FIRST_HOST_SPECIFIC_GENERIC_GATE 0x10
 #define NFA_HCI_FIRST_PROP_GATE 0xF0
@@ -36,10 +57,12 @@
 
 /* Generic Gates */
 #define NFA_HCI_CONNECTIVITY_GATE 0x41
-
+#if (NXP_EXTNS == TRUE)
+#define NFA_HCI_ETSI12_APDU_GATE 0x30
+#endif
 /* Proprietary Gates */
-#define NFA_HCI_PROP_GATE_FIRST 0xF0
-#define NFA_HCI_PROP_GATE_LAST 0xFF
+#define NFA_HCI_PROP_GATE_MIN 0xF0
+#define NFA_HCI_PROP_GATE_MAX 0xFF
 
 /* Static pipes */
 #define NFA_HCI_LINK_MANAGEMENT_PIPE 0x00
@@ -99,6 +122,13 @@
 #define NFA_HCI_EVT_POST_DATA 0x02
 #define NFA_HCI_EVT_HOT_PLUG 0x03
 
+#if (NXP_EXTNS == TRUE)
+#define NFA_HCI_EVT_WTX 0x11
+#define NFA_HCI_ABORT 0x12
+#define NFA_EVT_ABORT 0x11 /* ETSI12 */
+#define HCI_INVALID_CMD 0xFF
+#endif
+
 /* NFA HCI Connectivity gate Events */
 #define NFA_HCI_EVT_CONNECTIVITY 0x10
 #define NFA_HCI_EVT_TRANSACTION 0x12
@@ -108,6 +138,11 @@
 #define NFA_HCI_SESSION_IDENTITY_INDEX 0x01
 #define NFA_HCI_WHITELIST_INDEX 0x03
 #define NFA_HCI_HOST_LIST_INDEX 0x04
+#if (NXP_EXTNS == TRUE)
+#define NFA_HCI_HOST_ID_INDEX 0x05
+#define NFA_HCI_HOST_TYPE_INDEX 0x06
+#define NFA_HCI_HOST_TYPE_LIST_INDEX 0x07
+#endif
 
 /* DH Identity management gate registry identifier */
 #define NFA_HCI_VERSION_SW_INDEX 0x01
@@ -116,5 +151,12 @@
 #define NFA_HCI_MODEL_ID_INDEX 0x05
 #define NFA_HCI_HCI_VERSION_INDEX 0x02
 #define NFA_HCI_GATES_LIST_INDEX 0x06
+
+/* DH APDU ETSI  gate registry identifier */
+#if (NXP_EXTNS == TRUE)
+#define NFA_HCI_MAX_C_APDU_SIZE_INDEX 0x01
+#define NFA_HCI_MAX_WAIT_TIME_INDEX 0x02
+
+#endif
 
 #endif /* NFA_HCI_DEFS_H */

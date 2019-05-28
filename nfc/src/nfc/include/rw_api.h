@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 /******************************************************************************
  *
@@ -36,6 +55,9 @@
 #define RW_T3T_FIRST_EVT 0x60
 #define RW_T4T_FIRST_EVT 0x80
 #define RW_I93_FIRST_EVT 0xA0
+#if (NXP_EXTNS == TRUE)
+#define RW_T3BT_FIRST_EVT 0xB0
+#endif
 
 enum {
   /* Note: the order of these events can not be changed */
@@ -103,6 +125,9 @@ enum {
   RW_T4T_RAW_FRAME_EVT,        /* Response of raw frame sent               */
   RW_T4T_INTF_ERROR_EVT,       /* RF Interface error event                 */
   RW_T4T_NDEF_FORMAT_CPLT_EVT, /* Format operation completed               */
+#if (NXP_EXTNS == TRUE)
+  RW_T4T_RAW_FRAME_RF_WTX_EVT, /* Received RF WTX for raw frame sent       */
+#endif
   RW_T4T_MAX_EVT,
 
   /* ISO 15693 tag events for tRW_CBACK */
@@ -122,9 +147,17 @@ enum {
   RW_I93_PRESENCE_CHECK_EVT,   /* Response to RW_I93PresenceCheck    */
   RW_I93_RAW_FRAME_EVT,        /* Response of raw frame sent         */
   RW_I93_INTF_ERROR_EVT,       /* RF Interface error event           */
+#if (NXP_EXTNS == TRUE)
+  RW_I93_MAX_EVT,
+  RW_T3BT_RAW_READ_CPLT_EVT,
+  RW_T3BT_MAX_EVT
+#else
   RW_I93_MAX_EVT
+#endif
 };
-
+#if (NXP_EXTNS == TRUE)
+#define RW_I93_MAX_RSP_TIMEOUT 1000
+#endif
 #define RW_RAW_FRAME_EVT 0xFF
 
 typedef uint8_t tRW_EVENT;
@@ -201,21 +234,21 @@ typedef struct {
 } tRW_T4T_SW;
 
 typedef struct /* RW_I93_INVENTORY_EVT        */
-{
+    {
   tNFC_STATUS status;            /* status of Inventory command */
   uint8_t dsfid;                 /* DSFID                       */
   uint8_t uid[I93_UID_BYTE_LEN]; /* UID[0]:MSB, ... UID[7]:LSB  */
 } tRW_I93_INVENTORY;
 
 typedef struct /* RW_I93_DATA_EVT               */
-{
+    {
   tNFC_STATUS status; /* status of Read/Get security status command */
   uint8_t command;    /* sent command                  */
   NFC_HDR* p_data;    /* block data of security status */
 } tRW_I93_DATA;
 
 typedef struct /* RW_I93_SYS_INFO_EVT             */
-{
+    {
   tNFC_STATUS status;            /* status of Get Sys Info command  */
   uint8_t info_flags;            /* information flags               */
   uint8_t uid[I93_UID_BYTE_LEN]; /* UID[0]:MSB, ... UID[7]:LSB      */
@@ -227,7 +260,7 @@ typedef struct /* RW_I93_SYS_INFO_EVT             */
 } tRW_I93_SYS_INFO;
 
 typedef struct /* RW_I93_CMD_CMPL_EVT             */
-{
+    {
   tNFC_STATUS status; /* status of sent command          */
   uint8_t command;    /* sent command                    */
   uint8_t error_code; /* error code; I93_ERROR_CODE_XXX  */
@@ -240,6 +273,7 @@ typedef struct {
 
 typedef union {
   tNFC_STATUS status;
+  tRW_T2T_DETECT t2t_detect;       /* t2t NDEF information                  */
   tRW_T3T_POLL t3t_poll;           /* Response to t3t poll command          */
   tRW_T3T_SYSTEM_CODES t3t_sc;     /* Received system codes from t3 tag     */
   tRW_DETECT_TLV_DATA tlv;         /* The information of detected TLV data  */
@@ -1331,4 +1365,8 @@ extern tNFC_STATUS RW_SendRawFrame(uint8_t* p_raw_data, uint16_t data_len);
 *******************************************************************************/
 extern tNFC_STATUS RW_SetActivatedTagType(tNFC_ACTIVATE_DEVT* p_activate_params,
                                           tRW_CBACK* p_cback);
+#if (NXP_EXTNS == TRUE)
+extern tNFC_STATUS RW_T3BtGetPupiID();
+#endif
+
 #endif /* RW_API_H */

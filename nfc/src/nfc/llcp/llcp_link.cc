@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 /******************************************************************************
  *
@@ -26,35 +45,35 @@
 
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
-#include <log/log.h>
-#include "bt_types.h"
+
 #include "gki.h"
-#include "llcp_defs.h"
+#include "bt_types.h"
 #include "llcp_int.h"
-#include "nfa_dm_int.h"
+#include "llcp_defs.h"
 #include "nfc_int.h"
-#include "trace_api.h"
+#include "nfa_sys.h"
+#include "nfa_dm_int.h"
 
 using android::base::StringPrintf;
 
 const uint16_t llcp_link_rwt
     [15] = /* RWT = (302us)*2**WT; 302us = 256*16/fc; fc = 13.56MHz */
     {
-        1,    /* WT=0,     302us */
-        1,    /* WT=1,     604us */
-        2,    /* WT=2,    1208us */
-        3,    /* WT=3,     2.4ms */
-        5,    /* WT=4,     4.8ms */
-        10,   /* WT=5,     9.7ms */
-        20,   /* WT=6,    19.3ms */
-        39,   /* WT=7,    38.7ms */
-        78,   /* WT=8,    77.3ms */
-        155,  /* WT=9,   154.6ms */
-        310,  /* WT=10,  309.2ms */
-        619,  /* WT=11,  618.5ms */
-        1237, /* WT=12, 1237.0ms */
-        2474, /* WT=13, 2474.0ms */
-        4948, /* WT=14, 4948.0ms */
+     1,    /* WT=0,     302us */
+     1,    /* WT=1,     604us */
+     2,    /* WT=2,    1208us */
+     3,    /* WT=3,     2.4ms */
+     5,    /* WT=4,     4.8ms */
+     10,   /* WT=5,     9.7ms */
+     20,   /* WT=6,    19.3ms */
+     39,   /* WT=7,    38.7ms */
+     78,   /* WT=8,    77.3ms */
+     155,  /* WT=9,   154.6ms */
+     310,  /* WT=10,  309.2ms */
+     619,  /* WT=11,  618.5ms */
+     1237, /* WT=12, 1237.0ms */
+     2474, /* WT=13, 2474.0ms */
+     4948, /* WT=14, 4948.0ms */
 };
 
 static bool llcp_link_parse_gen_bytes(uint8_t gen_bytes_len,
@@ -78,7 +97,7 @@ static NFC_HDR* llcp_link_get_next_pdu(bool length_only,
 static NFC_HDR* llcp_link_build_next_pdu(NFC_HDR* p_agf);
 static void llcp_link_send_to_lower(NFC_HDR* p_msg);
 
-#if (LLCP_TEST_INCLUDED == TRUE) /* this is for LLCP testing */
+#if (LLCP_TEST_INCLUDED == true) /* this is for LLCP testing */
 extern tLLCP_TEST_PARAMS llcp_test_params;
 #endif
 
@@ -100,8 +119,8 @@ static std::string llcp_pdu_type(uint8_t ptype);
 static void llcp_link_start_inactivity_timer(void) {
   if ((llcp_cb.lcb.inact_timer.in_use == false) &&
       (llcp_cb.lcb.inact_timeout > 0)) {
-    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-        "Start inactivity_timer: %d ms", llcp_cb.lcb.inact_timeout);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Start inactivity_timer: %d ms",
+                      llcp_cb.lcb.inact_timeout);
 
     nfc_start_quick_timer(&llcp_cb.lcb.inact_timer, NFC_TTYPE_LLCP_LINK_INACT,
                           ((uint32_t)llcp_cb.lcb.inact_timeout) *
@@ -173,23 +192,23 @@ static void llcp_link_stop_link_timer(void) {
 **
 *******************************************************************************/
 tLLCP_STATUS llcp_link_activate(tLLCP_ACTIVATE_CONFIG* p_config) {
-  DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("llcp_link_activate ()");
 
   /* At this point, MAC link activation procedure has been successfully
    * completed */
 
   /* The Length Reduction values LRi and LRt MUST be 11b. (254bytes) */
   if (p_config->max_payload_size != LLCP_NCI_MAX_PAYL_SIZE) {
-    LOG(WARNING) << StringPrintf("max payload size (%d) must be %d bytes",
-                                 p_config->max_payload_size,
-                                 LLCP_NCI_MAX_PAYL_SIZE);
+    LOG(WARNING) << StringPrintf(
+        "llcp_link_activate (): max payload size (%d) must be %d bytes",
+        p_config->max_payload_size, LLCP_NCI_MAX_PAYL_SIZE);
   }
 
   /* Processing the parametes that have been received with the MAC link
    * activation */
   if (llcp_link_parse_gen_bytes(p_config->gen_bytes_len,
                                 p_config->p_gen_bytes) == false) {
-    LOG(ERROR) << StringPrintf("Failed to parse general bytes");
+    LOG(ERROR) << StringPrintf("llcp_link_activate (): Failed to parse general bytes");
     /* For LLCP DTA test, In case of bad magic bytes normal p2p communication is
      * expected,but in case of wrong magic bytes in ATR_REQ, LLC layer will be
      * disconnected but P2P connection is expected to be in connected state
@@ -229,7 +248,7 @@ tLLCP_STATUS llcp_link_activate(tLLCP_ACTIVATE_CONFIG* p_config) {
   if ((p_config->is_initiator) &&
       (llcp_link_rwt[p_config->waiting_time] > llcp_cb.lcb.peer_lto)) {
     LOG(WARNING) << StringPrintf(
-        "WT (%d, %dms) must be less than or equal to "
+        "llcp_link_activate (): WT (%d, %dms) must be less than or equal to "
         "LTO (%dms)",
         p_config->waiting_time, llcp_link_rwt[p_config->waiting_time],
         llcp_cb.lcb.peer_lto);
@@ -243,7 +262,7 @@ tLLCP_STATUS llcp_link_activate(tLLCP_ACTIVATE_CONFIG* p_config) {
   }
   /* LLCP version number agreement */
   if (llcp_link_version_agreement() == false) {
-    LOG(ERROR) << StringPrintf("Failed to agree version");
+    LOG(ERROR) << StringPrintf("llcp_link_activate (): Failed to agree version");
     (*llcp_cb.lcb.p_link_cback)(LLCP_LINK_ACTIVATION_FAILED_EVT,
                                 LLCP_LINK_VERSION_FAILED);
 
@@ -273,7 +292,7 @@ tLLCP_STATUS llcp_link_activate(tLLCP_ACTIVATE_CONFIG* p_config) {
   ** symmetry procedure.
   */
   if (llcp_cb.lcb.is_initiator) {
-    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Connected as Initiator");
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("llcp_link_activate (): Connected as Initiator");
 
     llcp_cb.lcb.inact_timeout = llcp_cb.lcb.inact_timeout_init;
     llcp_cb.lcb.symm_state = LLCP_LINK_SYMM_LOCAL_XMIT_NEXT;
@@ -288,7 +307,7 @@ tLLCP_STATUS llcp_link_activate(tLLCP_ACTIVATE_CONFIG* p_config) {
       llcp_link_send_SYMM();
     }
   } else {
-    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Connected as Target");
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("llcp_link_activate (): Connected as Target");
     llcp_cb.lcb.inact_timeout = llcp_cb.lcb.inact_timeout_target;
     llcp_cb.lcb.symm_state = LLCP_LINK_SYMM_REMOTE_XMIT_NEXT;
 
@@ -357,7 +376,7 @@ void llcp_link_process_link_timeout(void) {
         (llcp_cb.lcb.symm_state == LLCP_LINK_SYMM_LOCAL_XMIT_NEXT)) {
       /* upper layer doesn't have anything to send */
       DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-          "LEVT_TIMEOUT in state of "
+          "llcp_link_process_link_timeout (): LEVT_TIMEOUT in state of "
           "LLCP_LINK_SYMM_LOCAL_XMIT_NEXT");
       llcp_link_send_SYMM();
 
@@ -370,7 +389,7 @@ void llcp_link_process_link_timeout(void) {
       }
     } else {
       LOG(ERROR) << StringPrintf(
-          "LEVT_TIMEOUT in state of "
+          "llcp_link_process_link_timeout (): LEVT_TIMEOUT in state of "
           "LLCP_LINK_SYMM_REMOTE_XMIT_NEXT");
       llcp_link_deactivate(LLCP_LINK_TIMEOUT);
     }
@@ -395,7 +414,7 @@ void llcp_link_deactivate(uint8_t reason) {
   tLLCP_DLCB* p_dlcb;
   tLLCP_APP_CB* p_app_cb;
 
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("reason = 0x%x", reason);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("llcp_link_deactivate () reason = 0x%x", reason);
 
   /* Release any held buffers in signaling PDU queue */
   while (llcp_cb.lcb.sig_xmit_q.p_first)
@@ -452,8 +471,8 @@ void llcp_link_deactivate(uint8_t reason) {
     llcp_util_send_disc(LLCP_SAP_LM, LLCP_SAP_LM);
 
     /* Wait until DISC is sent to peer */
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("Wait until DISC is sent to peer");
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+        "llcp_link_deactivate (): Wait until DISC is sent to peer");
 
     llcp_cb.lcb.link_state = LLCP_LINK_STATE_DEACTIVATING;
 
@@ -490,7 +509,7 @@ void llcp_link_deactivate(uint8_t reason) {
 **
 ** Description      Check LLCP magic number and get parameters in general bytes
 **
-** Returns          TRUE if success
+** Returns          true if success
 **
 *******************************************************************************/
 static bool llcp_link_parse_gen_bytes(uint8_t gen_bytes_len,
@@ -509,10 +528,10 @@ static bool llcp_link_parse_gen_bytes(uint8_t gen_bytes_len,
     return (llcp_util_parse_link_params(length, p));
   } else /* if this is not LLCP */
   {
-    return false;
+    return (false);
   }
 
-  return true;
+  return (true);
 }
 
 /*******************************************************************************
@@ -521,7 +540,7 @@ static bool llcp_link_parse_gen_bytes(uint8_t gen_bytes_len,
 **
 ** Description      LLCP version number agreement
 **
-** Returns          TRUE if success
+** Returns          true if success
 **
 *******************************************************************************/
 static bool llcp_link_version_agreement(void) {
@@ -532,7 +551,7 @@ static bool llcp_link_version_agreement(void) {
 
   if (peer_major_version < LLCP_MIN_MAJOR_VERSION) {
     LOG(ERROR) << StringPrintf(
-        "unsupported peer version number. Peer "
+        "llcp_link_version_agreement(): unsupported peer version number. Peer "
         "Major Version:%d",
         peer_major_version);
     return false;
@@ -560,7 +579,7 @@ static bool llcp_link_version_agreement(void) {
         peer_minor_version, llcp_cb.lcb.agreed_major_version,
         llcp_cb.lcb.agreed_minor_version);
 
-    return true;
+    return (true);
   }
 }
 
@@ -729,9 +748,8 @@ static void llcp_link_check_uncongested(void) {
           /* if it was congested but now tx queue count is below threshold */
           p_app_cb->is_ui_tx_congested = false;
 
-          DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-              "Logical link (SAP=0x%X) congestion end: count=%d", sap,
-              p_app_cb->ui_xmit_q.count);
+          DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Logical link (SAP=0x%X) congestion end: count=%d",
+                            sap, p_app_cb->ui_xmit_q.count);
 
           data.congest.local_sap = sap;
           p_app_cb->p_app_cback(&data);
@@ -811,7 +829,6 @@ static void llcp_link_check_uncongested(void) {
 static void llcp_link_send_SYMM(void) {
   NFC_HDR* p_msg;
   uint8_t* p;
-
   p_msg = (NFC_HDR*)GKI_getpoolbuf(LLCP_POOL_ID);
 
   if (p_msg) {
@@ -864,7 +881,6 @@ static void llcp_link_send_invalid_pdu(void) {
 *******************************************************************************/
 void llcp_link_check_send_data(void) {
   NFC_HDR* p_pdu;
-
   /* don't re-enter while processing to prevent out of sequence */
   if (llcp_cb.lcb.is_sending_data)
     return;
@@ -881,7 +897,7 @@ void llcp_link_check_send_data(void) {
       (appl_dta_mode_flag &&
        llcp_cb.lcb.link_state == LLCP_LINK_STATE_DEACTIVATING)) {
     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-        "in state of "
+        "llcp_link_check_send_data () in state of "
         "LLCP_LINK_SYMM_LOCAL_XMIT_NEXT");
 
     p_pdu = llcp_link_build_next_pdu(NULL);
@@ -979,7 +995,8 @@ static void llcp_link_proc_ui_pdu(uint8_t local_sap, uint8_t remote_sap,
   if ((p_app_cb) && (p_app_cb->p_app_cback) &&
       (p_app_cb->link_type & LLCP_LINK_TYPE_LOGICAL_DATA_LINK)) {
     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-        "Local SAP:0x%x, Remote SAP:0x%x", local_sap, remote_sap);
+        "llcp_link_proc_ui_pdu () Local SAP:0x%x, Remote SAP:0x%x", local_sap,
+        remote_sap);
 
     /* if this is not from AGF PDU */
     if (p_msg) {
@@ -992,7 +1009,7 @@ static void llcp_link_proc_ui_pdu(uint8_t local_sap, uint8_t remote_sap,
     /* get last buffer in rx queue */
     p_last_buf = (NFC_HDR*)GKI_getlast(&p_app_cb->ui_rx_q);
 
-    if (p_last_buf) {
+    if ((p_last_buf) && (p_ui_pdu != NULL)) {
       /* get max length to append at the end of buffer */
       available_bytes = GKI_get_buf_size(p_last_buf) - NFC_HDR_SIZE -
                         p_last_buf->offset - p_last_buf->len;
@@ -1030,7 +1047,7 @@ static void llcp_link_proc_ui_pdu(uint8_t local_sap, uint8_t remote_sap,
       } else {
         p_msg = (NFC_HDR*)GKI_getpoolbuf(LLCP_POOL_ID);
 
-        if (p_msg) {
+        if ((p_msg) && (p_ui_pdu != NULL)) {
           p_dst = (uint8_t*)(p_msg + 1);
 
           /* add length of PDU in front of UI PDU */
@@ -1042,7 +1059,7 @@ static void llcp_link_proc_ui_pdu(uint8_t local_sap, uint8_t remote_sap,
           p_msg->len = LLCP_PDU_AGF_LEN_SIZE + ui_pdu_length;
           p_msg->layer_specific = 0;
         } else {
-          LOG(ERROR) << StringPrintf("out of buffer");
+          LOG(ERROR) << StringPrintf("llcp_link_proc_ui_pdu (): out of buffer");
         }
       }
 
@@ -1055,7 +1072,7 @@ static void llcp_link_proc_ui_pdu(uint8_t local_sap, uint8_t remote_sap,
 
     if (p_app_cb->ui_rx_q.count > llcp_cb.ll_rx_congest_start) {
       LOG(WARNING) << StringPrintf(
-          "SAP:0x%x, rx link is congested (%d), "
+          "llcp_link_proc_ui_pdu (): SAP:0x%x, rx link is congested (%d), "
           "discard oldest UI PDU",
           local_sap, p_app_cb->ui_rx_q.count);
 
@@ -1071,7 +1088,8 @@ static void llcp_link_proc_ui_pdu(uint8_t local_sap, uint8_t remote_sap,
       (*p_app_cb->p_app_cback)(&data);
     }
   } else {
-    LOG(ERROR) << StringPrintf("Unregistered SAP:0x%x", local_sap);
+    LOG(ERROR) << StringPrintf("llcp_link_proc_ui_pdu (): Unregistered SAP:0x%x",
+                      local_sap);
 
     if (p_msg) {
       GKI_freebuf(p_msg);
@@ -1090,8 +1108,8 @@ static void llcp_link_proc_ui_pdu(uint8_t local_sap, uint8_t remote_sap,
 *******************************************************************************/
 static void llcp_link_proc_agf_pdu(NFC_HDR* p_agf) {
   uint16_t agf_length;
-  uint8_t *p, *p_info, *p_pdu_length;
-  uint16_t pdu_hdr, pdu_length, pdu_num;
+  uint8_t* p, *p_info, *p_pdu_length;
+  uint16_t pdu_hdr, pdu_length;
   uint8_t dsap, ptype, ssap;
 
   p_agf->len -= LLCP_PDU_HEADER_SIZE;
@@ -1102,15 +1120,10 @@ static void llcp_link_proc_agf_pdu(NFC_HDR* p_agf) {
   */
   agf_length = p_agf->len;
   p = (uint8_t*)(p_agf + 1) + p_agf->offset;
-  pdu_num = 0;
 
   while (agf_length > 0) {
     if (agf_length > LLCP_PDU_AGF_LEN_SIZE) {
       BE_STREAM_TO_UINT16(pdu_length, p);
-      if (pdu_length < LLCP_PDU_HEADER_SIZE) {
-        LOG(ERROR) << StringPrintf("Received invalid encapsulated PDU");
-        break;
-      }
       agf_length -= LLCP_PDU_AGF_LEN_SIZE;
     } else {
       break;
@@ -1119,15 +1132,13 @@ static void llcp_link_proc_agf_pdu(NFC_HDR* p_agf) {
     if (pdu_length <= agf_length) {
       p += pdu_length;
       agf_length -= pdu_length;
-      pdu_num++;
     } else {
       break;
     }
   }
 
-  if (agf_length != 0 || pdu_num < 2) {
-    android_errorWriteLog(0x534e4554, "116791157");
-    LOG(ERROR) << StringPrintf("Received invalid AGF PDU");
+  if (agf_length != 0) {
+    LOG(ERROR) << StringPrintf("llcp_link_proc_agf_pdu (): Received invalid AGF PDU");
     GKI_freebuf(p_agf);
     return;
   }
@@ -1138,7 +1149,7 @@ static void llcp_link_proc_agf_pdu(NFC_HDR* p_agf) {
   agf_length = p_agf->len;
   p = (uint8_t*)(p_agf + 1) + p_agf->offset;
 
-  while (agf_length >= LLCP_PDU_HEADER_SIZE) {
+  while (agf_length > 0) {
     /* get length of PDU */
     p_pdu_length = p;
     BE_STREAM_TO_UINT16(pdu_length, p);
@@ -1153,7 +1164,7 @@ static void llcp_link_proc_agf_pdu(NFC_HDR* p_agf) {
     ssap = LLCP_GET_SSAP(pdu_hdr);
 
     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-        "Rx DSAP:0x%x, PTYPE:%s (0x%x), SSAP:0x%x "
+        "llcp_link_proc_agf_pdu (): Rx DSAP:0x%x, PTYPE:%s (0x%x), SSAP:0x%x "
         "in AGF",
         dsap, llcp_pdu_type(ptype).c_str(), ptype, ssap);
 
@@ -1162,12 +1173,12 @@ static void llcp_link_proc_agf_pdu(NFC_HDR* p_agf) {
       GKI_freebuf(p_agf);
       llcp_link_deactivate(LLCP_LINK_REMOTE_INITIATED);
       return;
-    } else if (ptype == LLCP_PDU_AGF_TYPE) {
-      LOG(ERROR) << StringPrintf("AGF PDU shall not be in AGF");
     } else if (ptype == LLCP_PDU_SYMM_TYPE) {
-      LOG(ERROR) << StringPrintf("SYMM PDU exchange shall not be in AGF");
+      LOG(ERROR) << StringPrintf(
+          "llcp_link_proc_agf_pdu (): SYMM PDU exchange shall not be in AGF");
     } else if (ptype == LLCP_PDU_PAX_TYPE) {
-      LOG(ERROR) << StringPrintf("PAX PDU exchange shall not be used");
+      LOG(ERROR) << StringPrintf(
+          "llcp_link_proc_agf_pdu (): PAX PDU exchange shall not be used");
     } else if (ptype == LLCP_PDU_SNL_TYPE) {
       llcp_sdp_proc_snl((uint16_t)(pdu_length - LLCP_PDU_HEADER_SIZE), p_info);
     } else if ((ptype == LLCP_PDU_UI_TYPE) &&
@@ -1205,7 +1216,8 @@ static void llcp_link_proc_rx_pdu(uint8_t dsap, uint8_t ptype, uint8_t ssap,
 
   switch (ptype) {
     case LLCP_PDU_PAX_TYPE:
-      LOG(ERROR) << StringPrintf("; PAX PDU exchange shall not be used");
+      LOG(ERROR) << StringPrintf(
+          "llcp_link_proc_rx_pdu (); PAX PDU exchange shall not be used");
       break;
 
     case LLCP_PDU_DISC_TYPE:
@@ -1284,8 +1296,7 @@ static void llcp_link_proc_rx_data(NFC_HDR* p_msg) {
         llcp_link_process_link_timeout();
     } else {
       if (p_msg->len < LLCP_PDU_HEADER_SIZE) {
-        LOG(ERROR) << StringPrintf("Received too small PDU: got %d bytes",
-                                   p_msg->len);
+        LOG(ERROR) << StringPrintf("Received too small PDU: got %d bytes", p_msg->len);
         frame_error = true;
       } else {
         p = (uint8_t*)(p_msg + 1) + p_msg->offset;
@@ -1302,8 +1313,7 @@ static void llcp_link_proc_rx_data(NFC_HDR* p_msg) {
             info_length =
                 p_msg->len - LLCP_PDU_HEADER_SIZE - LLCP_SEQUENCE_SIZE;
           } else {
-            LOG(ERROR) << StringPrintf(
-                "Received I/RR/RNR PDU without sequence");
+            LOG(ERROR) << StringPrintf("Received I/RR/RNR PDU without sequence");
             frame_error = true;
           }
         } else {
@@ -1312,21 +1322,20 @@ static void llcp_link_proc_rx_data(NFC_HDR* p_msg) {
 
         /* check if length of information is bigger than link MIU */
         if ((!frame_error) && (info_length > llcp_cb.lcb.local_link_miu)) {
-          LOG(ERROR) << StringPrintf(
-              "Received exceeding MIU (%d): got %d bytes SDU",
-              llcp_cb.lcb.local_link_miu, info_length);
+          LOG(ERROR) << StringPrintf("Received exceeding MIU (%d): got %d bytes SDU",
+                            llcp_cb.lcb.local_link_miu, info_length);
 
           frame_error = true;
         } else {
           DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-              "DSAP:0x%x, PTYPE:%s (0x%x), "
+              "llcp_link_proc_rx_data (): DSAP:0x%x, PTYPE:%s (0x%x), "
               "SSAP:0x%x",
               dsap, llcp_pdu_type(ptype).c_str(), ptype, ssap);
 
           if (ptype == LLCP_PDU_SYMM_TYPE) {
             if (info_length > 0) {
-              LOG(ERROR) << StringPrintf(
-                  "Received extra data (%d bytes) in SYMM PDU", info_length);
+              LOG(ERROR) << StringPrintf("Received extra data (%d bytes) in SYMM PDU",
+                                info_length);
               frame_error = true;
             }
           } else {
@@ -1338,7 +1347,6 @@ static void llcp_link_proc_rx_data(NFC_HDR* p_msg) {
           }
         }
       }
-
       llcp_cb.lcb.symm_state = LLCP_LINK_SYMM_LOCAL_XMIT_NEXT;
 
       /* check if any pending packet */
@@ -1357,7 +1365,7 @@ static void llcp_link_proc_rx_data(NFC_HDR* p_msg) {
 **
 ** Description      Get next PDU from link manager or data links w/wo dequeue
 **
-** Returns          pointer of a PDU to send if length_only is FALSE
+** Returns          pointer of a PDU to send if length_only is false
 **                  NULL otherwise
 **
 *******************************************************************************/
@@ -1477,11 +1485,11 @@ static NFC_HDR* llcp_link_get_next_pdu(bool length_only,
 **
 *******************************************************************************/
 static NFC_HDR* llcp_link_build_next_pdu(NFC_HDR* p_pdu) {
-  NFC_HDR *p_agf = NULL, *p_msg = NULL, *p_next_pdu;
-  uint8_t *p, ptype;
+  NFC_HDR* p_agf = NULL, * p_msg = NULL, *p_next_pdu;
+  uint8_t* p, ptype;
   uint16_t next_pdu_length, pdu_hdr;
 
-  DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("llcp_link_build_next_pdu ()");
 
   /* add any pending SNL PDU into sig_xmit_q for transmitting */
   llcp_sdp_check_send_snl();
@@ -1532,7 +1540,7 @@ static NFC_HDR* llcp_link_build_next_pdu(NFC_HDR* p_pdu) {
           GKI_freebuf(p_msg);
           p_msg = p_agf;
         } else {
-          LOG(ERROR) << StringPrintf("Out of buffer");
+          LOG(ERROR) << StringPrintf("llcp_link_build_next_pdu (): Out of buffer");
           return p_msg;
         }
       } else {
@@ -1545,19 +1553,25 @@ static NFC_HDR* llcp_link_build_next_pdu(NFC_HDR* p_pdu) {
         llcp_cb.lcb.effective_miu) {
       /* Get a next PDU from link manager or data links */
       p_next_pdu = llcp_link_get_next_pdu(false, &next_pdu_length);
+      if (p_next_pdu != NULL) {
+        p = (uint8_t*)(p_agf + 1) + p_agf->offset + p_agf->len;
 
-      p = (uint8_t*)(p_agf + 1) + p_agf->offset + p_agf->len;
+        UINT16_TO_BE_STREAM(p, p_next_pdu->len);
+        memcpy(p, (uint8_t*)(p_next_pdu + 1) + p_next_pdu->offset,
+               p_next_pdu->len);
 
-      UINT16_TO_BE_STREAM(p, p_next_pdu->len);
-      memcpy(p, (uint8_t*)(p_next_pdu + 1) + p_next_pdu->offset,
-             p_next_pdu->len);
+        p_agf->len += 2 + p_next_pdu->len;
 
-      p_agf->len += 2 + p_next_pdu->len;
+        GKI_freebuf(p_next_pdu);
 
-      GKI_freebuf(p_next_pdu);
-
-      /* Get next PDU length from link manager or data links without dequeue */
-      llcp_link_get_next_pdu(true, &next_pdu_length);
+        /* Get next PDU length from link manager or data links without dequeue
+         */
+        llcp_link_get_next_pdu(true, &next_pdu_length);
+      } else {
+        LOG(ERROR) << StringPrintf(
+            "llcp_link_build_next_pdu (): Unable to get next pdu from queue");
+        break;
+      }
     } else {
       break;
     }
@@ -1579,10 +1593,7 @@ static NFC_HDR* llcp_link_build_next_pdu(NFC_HDR* p_pdu) {
 **
 *******************************************************************************/
 static void llcp_link_send_to_lower(NFC_HDR* p_pdu) {
-  DispLLCP(p_pdu, false);
-
   llcp_cb.lcb.symm_state = LLCP_LINK_SYMM_REMOTE_XMIT_NEXT;
-
   NFC_SendData(NFC_RF_CONN_ID, p_pdu);
 }
 
@@ -1597,8 +1608,8 @@ static void llcp_link_send_to_lower(NFC_HDR* p_pdu) {
 *******************************************************************************/
 void llcp_link_connection_cback(__attribute__((unused)) uint8_t conn_id,
                                 tNFC_CONN_EVT event, tNFC_CONN* p_data) {
+
   if (event == NFC_DATA_CEVT) {
-    DispLLCP((NFC_HDR*)p_data->data.p_data, true);
     if (llcp_cb.lcb.link_state == LLCP_LINK_STATE_DEACTIVATED) {
       /* respoding SYMM while LLCP is deactivated but RF link is not deactivated
        * yet */
@@ -1685,6 +1696,7 @@ static std::string llcp_pdu_type(uint8_t ptype) {
       return "RR";
     case LLCP_PDU_RNR_TYPE:
       return "RNR";
+
     default:
       return "RESERVED";
   }

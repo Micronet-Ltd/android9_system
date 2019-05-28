@@ -30,6 +30,10 @@
 /* start timer */
 #define BT_EVT_TO_START_TIMER 0x3c00
 
+#define TRACE_TYPE_MAX_NUM 20
+#define TRACE_TYPE_ALL 0xffff
+
 /* start quick timer */
 #define BT_EVT_TO_START_QUICK_TIMER 0x3e00
+
 #endif
