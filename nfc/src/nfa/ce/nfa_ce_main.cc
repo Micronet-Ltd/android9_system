@@ -21,7 +21,7 @@
  *  This is the main implementation file for the NFA_CE
  *
  ******************************************************************************/
-#include <string>
+#include <string.h>
 
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
@@ -73,7 +73,7 @@ static std::string nfa_ce_evt_2_str(uint16_t event);
 **
 *******************************************************************************/
 void nfa_ce_init(void) {
-  DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_ce_init ()");
 
   /* initialize control block */
   memset(&nfa_ce_cb, 0, sizeof(tNFA_CE_CB));
@@ -136,8 +136,8 @@ static void nfa_ce_proc_nfcc_power_mode(uint8_t nfcc_power_mode) {
   tNFA_CE_CB* p_cb = &nfa_ce_cb;
   uint8_t listen_info_idx;
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("nfcc_power_mode=%d", nfcc_power_mode);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_ce_proc_nfcc_power_mode (): nfcc_power_mode=%d",
+                   nfcc_power_mode);
 
   /* if NFCC power mode is change to full power */
   if (nfcc_power_mode == NFA_DM_PWR_MODE_FULL) {
@@ -173,7 +173,7 @@ bool nfa_ce_hdl_event(NFC_HDR* p_msg) {
   uint16_t act_idx;
   bool freebuf = true;
 
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
       "nfa_ce_handle_event event: %s (0x%02x), flags: %08x",
       nfa_ce_evt_2_str(p_msg->event).c_str(), p_msg->event, nfa_ce_cb.flags);
 
@@ -202,16 +202,22 @@ static std::string nfa_ce_evt_2_str(uint16_t event) {
   switch (event) {
     case NFA_CE_API_CFG_LOCAL_TAG_EVT:
       return "NFA_CE_API_CFG_LOCAL_TAG_EVT";
+
     case NFA_CE_API_REG_LISTEN_EVT:
       return "NFA_CE_API_REG_LISTEN_EVT";
+
     case NFA_CE_API_DEREG_LISTEN_EVT:
       return "NFA_CE_API_DEREG_LISTEN_EVT";
+
     case NFA_CE_API_CFG_ISODEP_TECH_EVT:
       return "NFA_CE_API_CFG_ISODEP_TECH_EVT";
+
     case NFA_CE_ACTIVATE_NTF_EVT:
       return "NFA_CE_ACTIVATE_NTF_EVT";
+
     case NFA_CE_DEACTIVATE_NTF_EVT:
       return "NFA_CE_DEACTIVATE_NTF_EVT";
+
     default:
       return "Unknown";
   }

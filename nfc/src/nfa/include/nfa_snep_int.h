@@ -24,15 +24,13 @@
 #ifndef NFA_SNEP_INT_H
 #define NFA_SNEP_INT_H
 
-#if (NFA_SNEP_INCLUDED == TRUE)
+#if (NFA_SNEP_INCLUDED == true)
 #include "llcp_api.h"
 #include "nfa_snep_api.h"
 
 /*****************************************************************************
 **  Constants and data types
 *****************************************************************************/
-/* SNEP Acceptable Length size */
-
 /* NFA SNEP events */
 enum {
   NFA_SNEP_API_START_DEFAULT_SERVER_EVT = NFA_SYS_EVT_START(NFA_ID_SNEP),
@@ -46,7 +44,6 @@ enum {
   NFA_SNEP_API_GET_RESP_EVT,
   NFA_SNEP_API_PUT_RESP_EVT,
   NFA_SNEP_API_DISCONNECT_EVT
-
 };
 
 /* data type for NFA_SNEP_API_START_DEFAULT_SERVER_EVT */
@@ -125,7 +122,7 @@ typedef struct {
 typedef struct {
   NFC_HDR hdr;
   tNFA_HANDLE conn_handle; /* response code                   */
-  bool flush;              /* TRUE if discard pending data    */
+  bool flush;              /* true if discard pending data    */
 } tNFA_SNEP_API_DISCONNECT;
 
 /* union of all event data types */
@@ -150,13 +147,6 @@ typedef union {
 **  control block
 *****************************************************************************/
 
-/* NFA SNEP service control block */
-/* ignore flags while searching   */
-/* waiting for connection confirm */
-/* data link connected            */
-/* Waiting for continue response  */
-/* Waiting for continue request   */
-
 typedef struct {
   uint8_t local_sap;        /* local SAP of service */
   uint8_t remote_sap;       /* local SAP of service */
@@ -165,8 +155,8 @@ typedef struct {
   TIMER_LIST_ENT timer;     /* timer for client     */
 
   uint16_t tx_miu;   /* adjusted MIU for throughput              */
-  bool congest;      /* TRUE if data link connection is congested */
-  bool rx_fragments; /* TRUE if waiting more fragments            */
+  bool congest;      /* true if data link connection is congested */
+  bool rx_fragments; /* true if waiting more fragments            */
 
   uint8_t tx_code; /* transmitted code in request/response */
   uint8_t rx_code; /* received code in request/response    */
@@ -224,5 +214,5 @@ extern tNFA_SNEP_DEFAULT_CB nfa_snep_default_cb;
 */
 void nfa_snep_init(bool is_dta_mode);
 
-#endif /* (NFA_SNEP_INCLUDED == TRUE) */
+#endif /* #if (NFA_SNEP_INCLUDED==true) */
 #endif /* NFA_SNEP_INT_H */

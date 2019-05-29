@@ -50,7 +50,6 @@ typedef uint8_t tNFC_HAL_PRM_FORMAT;
 *****************************************************************************/
 
 typedef uint8_t tNFC_HAL_NCI_EVT; /* MT + Opcode */
-
 /*******************************************************************************
 **
 ** Function         HAL_NfcPrmSetSpdNciCmdPayloadSize

@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 #ifndef GKI_COMMON_H
 #define GKI_COMMON_H
 
@@ -67,8 +86,13 @@ typedef struct _free_queue {
 
 /* Buffer related defines
 */
+#if (NXP_EXTNS == TRUE)
+#define ALIGN_POOL(pl_size) \
+  ((((pl_size) + (sizeof(uint32_t) - 1)) / sizeof(uint32_t)) * sizeof(uint32_t))
+#else
 #define ALIGN_POOL(pl_size) \
   ((((pl_size) + 3) / sizeof(uint32_t)) * sizeof(uint32_t))
+#endif
 /* Offset past header */
 #define BUFFER_HDR_SIZE (sizeof(BUFFER_HDR_T))
 /* Header + Magic Number */
@@ -223,12 +247,14 @@ typedef struct {
 
   /* Buffer related variables
   */
-  BUFFER_HDR_T* OSTaskQFirst[GKI_MAX_TASKS]
-                            [NUM_TASK_MBOX]; /* array of pointers to the first
-                                                event in the task mailbox */
-  BUFFER_HDR_T* OSTaskQLast[GKI_MAX_TASKS]
-                           [NUM_TASK_MBOX]; /* array of pointers to the last
-                                               event in the task mailbox */
+  BUFFER_HDR_T*
+      OSTaskQFirst[GKI_MAX_TASKS][NUM_TASK_MBOX]; /* array of pointers to the
+                                                     first event in the task
+                                                     mailbox */
+  BUFFER_HDR_T*
+      OSTaskQLast[GKI_MAX_TASKS][NUM_TASK_MBOX]; /* array of pointers to the
+                                                    last event in the task
+                                                    mailbox */
 
   /* Define the buffer pool management variables
   */
@@ -265,10 +291,11 @@ typedef struct {
   TIMER_LIST_Q* timer_queues[GKI_MAX_TIMER_QUEUES];
   /* System tick callback */
   SYSTEM_TICK_CBACK* p_tick_cb;
-  bool system_tick_running; /* TRUE if system tick is running. Valid only if
+  bool system_tick_running; /* true if system tick is running. Valid only if
                                p_tick_cb is not NULL */
 
 } tGKI_COM_CB;
+
 
 /* Internal GKI function prototypes
 */
@@ -277,5 +304,10 @@ extern bool gki_chk_buf_owner(void*);
 extern void gki_buffer_init(void);
 extern void gki_timers_init(void);
 extern void gki_adjust_timer_count(int32_t);
+
+/* Debug aids
+*/
+typedef void (*FP_PRINT)(char*, ...);
+
 
 #endif

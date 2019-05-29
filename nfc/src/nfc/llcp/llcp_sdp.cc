@@ -18,6 +18,26 @@
 
 /******************************************************************************
  *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
+
+/******************************************************************************
+ *
  *  This file contains the LLCP Service Discovery
  *
  ******************************************************************************/
@@ -27,11 +47,14 @@
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
 
-#include "bt_types.h"
 #include "gki.h"
+#include "bt_types.h"
 #include "llcp_api.h"
 #include "llcp_int.h"
 #include "nfa_dm_int.h"
+#if (NXP_EXTNS == TRUE)
+#include "nfa_sys.h"
+#endif
 
 using android::base::StringPrintf;
 
@@ -69,7 +92,7 @@ void llcp_sdp_check_send_snl(void) {
   uint8_t* p;
 
   if (llcp_cb.sdp_cb.p_snl) {
-    DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("SDP: llcp_sdp_check_send_snl ()");
 
     llcp_cb.sdp_cb.p_snl->len += LLCP_PDU_HEADER_SIZE;
     llcp_cb.sdp_cb.p_snl->offset -= LLCP_PDU_HEADER_SIZE;
@@ -130,8 +153,8 @@ tLLCP_STATUS llcp_sdp_send_sdreq(uint8_t tid, char* p_name) {
   uint16_t name_len;
   uint16_t available_bytes;
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("tid=0x%x, ServiceName=%s", tid, p_name);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("llcp_sdp_send_sdreq (): tid=0x%x, ServiceName=%s", tid,
+                    p_name);
 
   /* if there is no pending SNL */
   if (!llcp_cb.sdp_cb.p_snl) {
@@ -177,13 +200,11 @@ tLLCP_STATUS llcp_sdp_send_sdreq(uint8_t tid, char* p_name) {
   } else {
     status = LLCP_STATUS_FAIL;
   }
-
   /* if LM is waiting for PDUs from upper layer */
   if ((status == LLCP_STATUS_SUCCESS) &&
       (llcp_cb.lcb.symm_state == LLCP_LINK_SYMM_LOCAL_XMIT_NEXT)) {
     llcp_link_check_send_data();
   }
-
   return status;
 }
 
@@ -225,8 +246,7 @@ static tLLCP_STATUS llcp_sdp_send_sdres(uint8_t tid, uint8_t sap) {
   tLLCP_STATUS status;
   uint16_t available_bytes;
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("tid=0x%x, SAP=0x%x", tid, sap);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("llcp_sdp_send_sdres (): tid=0x%x, SAP=0x%x", tid, sap);
 
   /* if there is no pending SNL */
   if (!llcp_cb.sdp_cb.p_snl) {
@@ -270,13 +290,11 @@ static tLLCP_STATUS llcp_sdp_send_sdres(uint8_t tid, uint8_t sap) {
   } else {
     status = LLCP_STATUS_FAIL;
   }
-
   /* if LM is waiting for PDUs from upper layer */
   if ((status == LLCP_STATUS_SUCCESS) &&
       (llcp_cb.lcb.symm_state == LLCP_LINK_SYMM_LOCAL_XMIT_NEXT)) {
     llcp_link_check_send_data();
   }
-
   return status;
 }
 
@@ -296,17 +314,17 @@ uint8_t llcp_sdp_get_sap_by_name(char* p_name, uint8_t length) {
 
   for (sap = LLCP_SAP_SDP; sap <= LLCP_UPPER_BOUND_SDP_SAP; sap++) {
     p_app_cb = llcp_util_get_app_cb(sap);
-
-    if ((p_app_cb) && (p_app_cb->p_app_cback) &&
-        (strlen((char*)p_app_cb->p_service_name) == length) &&
-        (!strncmp((char*)p_app_cb->p_service_name, p_name, length))) {
-      /* if device is under LLCP DTA testing */
-      if (llcp_cb.p_dta_cback && (!strncmp((char*)p_app_cb->p_service_name,
-                                           "urn:nfc:sn:cl-echo-in", length))) {
-        llcp_cb.dta_snl_resp = true;
+    if((p_app_cb != nullptr) && (p_app_cb->p_service_name!=nullptr)) {
+      if ((p_app_cb) && (p_app_cb->p_app_cback) &&
+          (strlen((char*)p_app_cb->p_service_name) == length) &&
+          (!strncmp((char*)p_app_cb->p_service_name, p_name, length))) {
+        /* if device is under LLCP DTA testing */
+        if (llcp_cb.p_dta_cback && (!strncmp((char*)p_app_cb->p_service_name,
+                                             "urn:nfc:sn:cl-echo-in", length))) {
+          llcp_cb.dta_snl_resp = true;
+        }
+        return (sap);
       }
-
-      return (sap);
     }
   }
   return 0;
@@ -325,8 +343,7 @@ uint8_t llcp_sdp_get_sap_by_name(char* p_name, uint8_t length) {
 static void llcp_sdp_return_sap(uint8_t tid, uint8_t sap) {
   uint8_t i;
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("tid=0x%x, SAP=0x%x", tid, sap);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("llcp_sdp_return_sap (): tid=0x%x, SAP=0x%x", tid, sap);
 
   for (i = 0; i < LLCP_MAX_SDP_TRANSAC; i++) {
     if ((llcp_cb.sdp_cb.transac[i].p_cback) &&
@@ -352,7 +369,7 @@ static void llcp_sdp_return_sap(uint8_t tid, uint8_t sap) {
 void llcp_sdp_proc_deactivation(void) {
   uint8_t i;
 
-  DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("llcp_sdp_proc_deactivation ()");
 
   for (i = 0; i < LLCP_MAX_SDP_TRANSAC; i++) {
     if (llcp_cb.sdp_cb.transac[i].p_cback) {
@@ -385,13 +402,13 @@ void llcp_sdp_proc_deactivation(void) {
 tLLCP_STATUS llcp_sdp_proc_snl(uint16_t sdu_length, uint8_t* p) {
   uint8_t type, length, tid, sap, *p_value;
 
-  DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("llcp_sdp_proc_snl ()");
 
   if ((llcp_cb.lcb.agreed_major_version < LLCP_MIN_SNL_MAJOR_VERSION) ||
       ((llcp_cb.lcb.agreed_major_version == LLCP_MIN_SNL_MAJOR_VERSION) &&
        (llcp_cb.lcb.agreed_minor_version < LLCP_MIN_SNL_MINOR_VERSION))) {
     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-        "version number less than 1.1, SNL not "
+        "llcp_sdp_proc_snl(): version number less than 1.1, SNL not "
         "supported.");
     return LLCP_STATUS_FAIL;
   }
@@ -414,11 +431,10 @@ tLLCP_STATUS llcp_sdp_proc_snl(uint16_t sdu_length, uint8_t* p) {
            * SNL PDU i'e with improper service name "urn:nfc:sn:dta-co-echo-in",
            * the IUT should not send any PDU except SYMM PDU */
           if (appl_dta_mode_flag == 1 && sap == 0x00) {
-            DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-                "%s: In dta mode sap == 0x00 p_value = %s", __func__, p_value);
+            DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: In dta mode sap == 0x00 p_value = %s",
+                              __func__, p_value);
             if ((length - 1) == strlen((const char*)p_value)) {
-              DLOG_IF(INFO, nfc_debug_enabled)
-                  << StringPrintf("%s: Strings are not equal", __func__);
+              DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Strings are not equal", __func__);
               llcp_sdp_send_sdres(tid, sap);
             }
           } else {
@@ -428,14 +444,14 @@ tLLCP_STATUS llcp_sdp_proc_snl(uint16_t sdu_length, uint8_t* p) {
           /*For P2P in LLCP mode TC_CTO_TAR_BI_03_x(x=3) fix*/
           if (appl_dta_mode_flag == 1 &&
               ((nfa_dm_cb.eDtaMode & 0x0F) == NFA_DTA_LLCP_MODE)) {
-            LOG(ERROR) << StringPrintf("%s: Calling llcp_sdp_send_sdres",
-                                       __func__);
+            LOG(ERROR) << StringPrintf("%s: Calling llcp_sdp_send_sdres", __func__);
             tid = 0x01;
             sap = 0x00;
             llcp_sdp_send_sdres(tid, sap);
           }
-          LOG(ERROR) << StringPrintf("bad length (%d) in LLCP_SDREQ_TYPE",
-                                     length);
+          LOG(ERROR) << StringPrintf(
+              "llcp_sdp_proc_snl (): bad length (%d) in LLCP_SDREQ_TYPE",
+              length);
         }
         break;
 
@@ -448,13 +464,15 @@ tLLCP_STATUS llcp_sdp_proc_snl(uint16_t sdu_length, uint8_t* p) {
           BE_STREAM_TO_UINT8(sap, p_value);
           llcp_sdp_return_sap(tid, sap);
         } else {
-          LOG(ERROR) << StringPrintf("bad length (%d) in LLCP_SDRES_TYPE",
-                                     length);
+          LOG(ERROR) << StringPrintf(
+              "llcp_sdp_proc_snl (): bad length (%d) in LLCP_SDRES_TYPE",
+              length);
         }
         break;
 
       default:
-        LOG(WARNING) << StringPrintf("Unknown type (0x%x) is ignored", type);
+        LOG(WARNING) << StringPrintf(
+            "llcp_sdp_proc_snl (): Unknown type (0x%x) is ignored", type);
         break;
     }
 
@@ -468,7 +486,7 @@ tLLCP_STATUS llcp_sdp_proc_snl(uint16_t sdu_length, uint8_t* p) {
   }
 
   if (sdu_length) {
-    LOG(ERROR) << StringPrintf("Bad format of SNL");
+    LOG(ERROR) << StringPrintf("llcp_sdp_proc_snl (): Bad format of SNL");
     return LLCP_STATUS_FAIL;
   } else {
     return LLCP_STATUS_SUCCESS;

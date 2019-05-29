@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 /******************************************************************************
  *
@@ -26,9 +45,9 @@
 #ifndef RW_INT_H_
 #define RW_INT_H_
 
-#include "rw_api.h"
 #include "tags_defs.h"
 #include "tags_int.h"
+#include "rw_api.h"
 
 /* Proprietary definitions for HR0 and HR1 */
 /* TOPAZ96 Tag                                              */
@@ -160,7 +179,7 @@ typedef struct {
       pend_retx_rsp; /* Number of pending rsps to retransmission on prev cmd */
 } tRW_T1T_PREV_CMD_RSP_INFO;
 
-#if (RW_NDEF_INCLUDED == TRUE)
+#if (RW_NDEF_INCLUDED == true)
 /* Buffer 0-E block, for easier tlv operation           */
 #define T1T_BUFFER_SIZE T1T_STATIC_SIZE
 #else
@@ -186,7 +205,7 @@ typedef struct {
   bool b_update;    /* Tag header updated                                   */
   bool b_rseg;      /* Segment 0 read from tag                              */
   bool b_hard_lock; /* Hard lock the tag as part of config tag to Read only */
-#if (RW_NDEF_INCLUDED == TRUE)
+#if (RW_NDEF_INCLUDED == true)
   uint8_t segment;  /* Current Tag segment                                  */
   uint8_t substate; /* Current substate of RW module                        */
   uint16_t work_offset;                     /* Working byte offset */
@@ -244,6 +263,14 @@ typedef struct {
 #define T2T_BRCM_VERSION_BLOCK 0x00
 #define T2T_BRCM_STATIC_MEM 0x2E01
 #define T2T_BRCM_DYNAMIC_MEM 0x2E02
+
+#if (NXP_EXTNS == TRUE)
+/* CC2 value on MiFare ULC tag */
+#define T2T_MIFARE_ULC_TMS 0x12
+/* Possible corrupt cc2 value range on MiFare ULC tags */
+#define T2T_INVALID_CC_TMS_VAL0 0x10
+#define T2T_INVALID_CC_TMS_VAL1 0x1F
+#endif
 
 #define T2T_NDEF_NOT_DETECTED 0x00
 #define T2T_NDEF_DETECTED 0x01
@@ -409,7 +436,7 @@ typedef struct {
   bool b_hard_lock; /* Hard lock the tag as part of config tag to Read only */
   bool check_tag_halt; /* Resent command after NACK rsp to find tag is in HALT
                           State   */
-#if (RW_NDEF_INCLUDED == TRUE)
+#if (RW_NDEF_INCLUDED == true)
   bool skip_dyn_locks;   /* Skip reading dynamic lock bytes from the tag */
   uint8_t found_tlv;     /* The Tlv found while searching a particular TLV */
   uint8_t tlv_detect;    /* TLV type under detection */
@@ -592,7 +619,7 @@ typedef struct {
 } tRW_T4T_CB;
 
 /* RW retransmission statistics */
-#if (RW_STATS_INCLUDED == TRUE)
+#if (RW_STATS_INCLUDED == true)
 typedef struct {
   uint32_t start_tick;     /* System tick count at activation */
   uint32_t bytes_sent;     /* Total bytes sent since activation */
@@ -701,7 +728,7 @@ typedef struct {
   tRW_TCB tcb;
   tRW_CBACK* p_cback;
   uint32_t cur_retry; /* Retry count for the current operation */
-#if (RW_STATS_INCLUDED == TRUE)
+#if (RW_STATS_INCLUDED == true)
   tRW_STATS stats;
 #endif /* RW_STATS_INCLUDED */
 } tRW_CB;
@@ -710,12 +737,13 @@ typedef struct {
 **  EXTERNAL FUNCTION DECLARATIONS
 *****************************************************************************/
 
+
 /* Global NFC data */
 extern tRW_CB rw_cb;
 
 /* from .c */
 
-#if (RW_NDEF_INCLUDED == TRUE)
+#if (RW_NDEF_INCLUDED == true)
 extern tRW_EVENT rw_t1t_handle_rsp(const tT1T_CMD_RSP_INFO* p_info,
                                    bool* p_notify, uint8_t* p_data,
                                    tNFC_STATUS* p_status);
@@ -735,7 +763,7 @@ extern tNFC_STATUS rw_t1t_send_static_cmd(uint8_t opcode, uint8_t add,
 extern void rw_t1t_process_timeout(TIMER_LIST_ENT* p_tle);
 extern void rw_t1t_handle_op_complete(void);
 
-#if (RW_NDEF_INCLUDED == TRUE)
+#if (RW_NDEF_INCLUDED == true)
 extern tRW_EVENT rw_t2t_info_to_event(const tT2T_CMD_RSP_INFO* p_info);
 extern void rw_t2t_handle_rsp(uint8_t* p_data);
 #else
@@ -762,8 +790,10 @@ extern void rw_t4t_process_timeout(TIMER_LIST_ENT* p_tle);
 
 extern tNFC_STATUS rw_i93_select(uint8_t* p_uid);
 extern void rw_i93_process_timeout(TIMER_LIST_ENT* p_tle);
+
+void nfa_rw_update_pupi_id(uint8_t* p, uint8_t len);
 extern void rw_t4t_handle_isodep_nak_rsp(uint8_t status, bool is_ntf);
-#if (RW_STATS_INCLUDED == TRUE)
+#if (RW_STATS_INCLUDED == true)
 /* Internal fcns for statistics (from rw_main.c) */
 void rw_main_reset_stats(void);
 void rw_main_update_tx_stats(uint32_t bytes_tx, bool is_retry);

@@ -23,10 +23,10 @@
 #error Number of pools out of range (16 Max)!
 #endif
 
-#if (BTU_STACK_LITE_ENABLED == FALSE)
+#if (BTU_STACK_LITE_ENABLED == false)
 static void gki_add_to_pool_list(uint8_t pool_id);
 static void gki_remove_from_pool_list(uint8_t pool_id);
-#endif /*  BTU_STACK_LITE_ENABLED == FALSE */
+#endif /*  BTU_STACK_LITE_ENABLED == false */
 
 using android::base::StringPrintf;
 
@@ -97,7 +97,7 @@ static bool gki_alloc_free_queue(uint8_t id) {
   if (Q->p_first == 0) {
     void* p_mem = GKI_os_malloc((Q->size + BUFFER_PADDING_SIZE) * Q->total);
     if (p_mem) {
-      // re-initialize the queue with allocated memory
+// re-initialize the queue with allocated memory
       gki_init_free_queue(id, Q->size, Q->total, p_mem);
       return true;
     }
@@ -398,7 +398,7 @@ void GKI_freebuf(void* p_buf) {
   FREE_QUEUE_T* Q;
   BUFFER_HDR_T* p_hdr;
 
-#if (GKI_ENABLE_BUF_CORRUPTION_CHECK == TRUE)
+#if (GKI_ENABLE_BUF_CORRUPTION_CHECK == true)
   if (!p_buf || gki_chk_buf_damage(p_buf)) {
     GKI_exception(GKI_ERROR_BUF_CORRUPTED, "Free - Buf Corrupted");
     return;
@@ -453,9 +453,12 @@ void GKI_freebuf(void* p_buf) {
 uint16_t GKI_get_buf_size(void* p_buf) {
   BUFFER_HDR_T* p_hdr;
 
+
   p_hdr = (BUFFER_HDR_T*)((uint8_t*)p_buf - BUFFER_HDR_SIZE);
 
-  if ((uintptr_t)p_hdr & 1) return (0);
+  if ((uintptr_t)p_hdr & 1){
+    return (0);
+  }
 
   if (p_hdr->q_id < GKI_NUM_TOTAL_BUF_POOLS) {
     return (gki_cb.com.freeq[p_hdr->q_id].size);
@@ -470,24 +473,26 @@ uint16_t GKI_get_buf_size(void* p_buf) {
 **
 ** Description      Called internally by OSS to check for buffer corruption.
 **
-** Returns          TRUE if there is a problem, else FALSE
+** Returns          true if there is a problem, else false
 **
 *******************************************************************************/
 bool gki_chk_buf_damage(void* p_buf) {
-#if (GKI_ENABLE_BUF_CORRUPTION_CHECK == TRUE)
+#if (GKI_ENABLE_BUF_CORRUPTION_CHECK == true)
 
   uint32_t* magic;
   magic = (uint32_t*)((uint8_t*)p_buf + GKI_get_buf_size(p_buf));
 
-  if ((uintptr_t)magic & 1) return true;
+  if ((uintptr_t)magic & 1){
+    return (true);
+  }
 
-  if (*magic == MAGIC_NO) return false;
+  if (*magic == MAGIC_NO) return (false);
 
-  return true;
+  return (true);
 
 #else
 
-  return false;
+  return (false);
 
 #endif
 }
@@ -513,7 +518,7 @@ void GKI_send_msg(uint8_t task_id, uint8_t mbox, void* msg) {
     return;
   }
 
-#if (GKI_ENABLE_BUF_CORRUPTION_CHECK == TRUE)
+#if (GKI_ENABLE_BUF_CORRUPTION_CHECK == true)
   if (gki_chk_buf_damage(msg)) {
     GKI_exception(GKI_ERROR_BUF_CORRUPTED, "Send - Buffer corrupted");
     return;
@@ -598,7 +603,7 @@ void* GKI_read_mbox(uint8_t mbox) {
 void GKI_enqueue(BUFFER_Q* p_q, void* p_buf) {
   BUFFER_HDR_T* p_hdr;
 
-#if (GKI_ENABLE_BUF_CORRUPTION_CHECK == TRUE)
+#if (GKI_ENABLE_BUF_CORRUPTION_CHECK == true)
   if (gki_chk_buf_damage(p_buf)) {
     GKI_exception(GKI_ERROR_BUF_CORRUPTED, "Enqueue - Buffer corrupted");
     return;
@@ -649,7 +654,7 @@ void GKI_enqueue(BUFFER_Q* p_q, void* p_buf) {
 void GKI_enqueue_head(BUFFER_Q* p_q, void* p_buf) {
   BUFFER_HDR_T* p_hdr;
 
-#if (GKI_ENABLE_BUF_CORRUPTION_CHECK == TRUE)
+#if (GKI_ENABLE_BUF_CORRUPTION_CHECK == true)
   if (gki_chk_buf_damage(p_buf)) {
     GKI_exception(GKI_ERROR_BUF_CORRUPTED, "Enqueue - Buffer corrupted");
     return;
@@ -833,7 +838,7 @@ void* GKI_getnext(void* p_buf) {
 **
 ** Parameters:      p_q  - (input) pointer to a queue.
 **
-** Returns          TRUE if queue is empty, else FALSE
+** Returns          true if queue is empty, else false
 **
 *******************************************************************************/
 bool GKI_queue_is_empty(BUFFER_Q* p_q) { return ((bool)(p_q->count == 0)); }
@@ -881,10 +886,9 @@ void* GKI_find_buf_start(void* p_user_area) {
 * The following functions are not needed for light stack
 *********************************************************/
 #ifndef BTU_STACK_LITE_ENABLED
-#define BTU_STACK_LITE_ENABLED FALSE
+#define BTU_STACK_LITE_ENABLED false
 #endif
-
-#if (BTU_STACK_LITE_ENABLED == FALSE)
+#if (BTU_STACK_LITE_ENABLED == false)
 
 /*******************************************************************************
 **
@@ -1034,7 +1038,7 @@ void GKI_change_buf_owner(void* p_buf, uint8_t task_id) {
   return;
 }
 
-#if (GKI_SEND_MSG_FROM_ISR == TRUE)
+#if (GKI_SEND_MSG_FROM_ISR == true)
 /*******************************************************************************
 **
 ** Function         GKI_isend_msg
@@ -1056,14 +1060,14 @@ void GKI_isend_msg(uint8_t task_id, uint8_t mbox, void* msg) {
     return;
   }
 
-#if (GKI_ENABLE_BUF_CORRUPTION_CHECK == TRUE)
+#if (GKI_ENABLE_BUF_CORRUPTION_CHECK == true)
   if (gki_chk_buf_damage(msg)) {
     GKI_exception(GKI_ERROR_BUF_CORRUPTED, "Send - Buffer corrupted");
     return;
   }
 #endif
 
-#if (GKI_ENABLE_OWNER_CHECK == TRUE)
+#if (GKI_ENABLE_OWNER_CHECK == true)
   if (gki_chk_buf_owner(msg)) {
     GKI_exception(GKI_ERROR_NOT_BUF_OWNER, "Send by non-owner");
     return;
@@ -1197,7 +1201,7 @@ void GKI_delete_pool(uint8_t pool_id) {
   return;
 }
 
-#endif /*  BTU_STACK_LITE_ENABLED == FALSE */
+#endif /*  BTU_STACK_LITE_ENABLED == false */
 
 /*******************************************************************************
 **

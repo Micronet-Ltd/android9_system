@@ -26,13 +26,14 @@
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
 
-#include "nfa_dm_int.h"
 #include "nfa_rw_api.h"
 #include "nfa_rw_int.h"
+#include "nfa_dm_int.h"
 
 using android::base::StringPrintf;
 
 extern bool nfc_debug_enabled;
+
 
 /* NFA_RW control block */
 tNFA_RW_CB nfa_rw_cb;
@@ -56,7 +57,6 @@ const tNFA_RW_ACTION nfa_rw_action_tbl[] = {
 ** Local function prototypes
 *****************************************************************************/
 static std::string nfa_rw_evt_2_str(uint16_t event);
-
 /*******************************************************************************
 **
 ** Function         nfa_rw_init
@@ -67,7 +67,7 @@ static std::string nfa_rw_evt_2_str(uint16_t event);
 **
 *******************************************************************************/
 void nfa_rw_init(void) {
-  DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_init ()");
 
   /* initialize control block */
   memset(&nfa_rw_cb, 0, sizeof(tNFA_RW_CB));
@@ -170,23 +170,23 @@ tNFA_STATUS nfa_rw_send_raw_frame(NFC_HDR* p_data) {
 **
 ** Description      nfa rw main event handling function.
 **
-** Returns          TRUE if caller should free p_msg buffer
+** Returns          true if caller should free p_msg buffer
 **
 *******************************************************************************/
 bool nfa_rw_handle_event(NFC_HDR* p_msg) {
   uint16_t act_idx;
 
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-      "nfa_rw_handle_event event: %s (0x%02x), flags: %08x",
-      nfa_rw_evt_2_str(p_msg->event).c_str(), p_msg->event, nfa_rw_cb.flags);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_handle_event event: %s (0x%02x), flags: %08x",
+                   nfa_rw_evt_2_str(p_msg->event).c_str(), p_msg->event,
+                   nfa_rw_cb.flags);
 
   /* Get NFA_RW sub-event */
   act_idx = (p_msg->event & 0x00FF);
   if (act_idx < (NFA_RW_MAX_EVT & 0xFF)) {
     return (*nfa_rw_action_tbl[act_idx])((tNFA_RW_MSG*)p_msg);
   } else {
-    LOG(ERROR) << StringPrintf("nfa_rw_handle_event: unhandled event 0x%02X",
-                               p_msg->event);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_handle_event: unhandled event 0x%02X",
+                     p_msg->event);
     return true;
   }
 }
@@ -202,14 +202,19 @@ static std::string nfa_rw_evt_2_str(uint16_t event) {
   switch (event) {
     case NFA_RW_OP_REQUEST_EVT:
       return "NFA_RW_OP_REQUEST_EVT";
+
     case NFA_RW_ACTIVATE_NTF_EVT:
       return "NFA_RW_ACTIVATE_NTF_EVT";
+
     case NFA_RW_DEACTIVATE_NTF_EVT:
       return "NFA_RW_DEACTIVATE_NTF_EVT";
+
     case NFA_RW_PRESENCE_CHECK_TICK_EVT:
       return "NFA_RW_PRESENCE_CHECK_TICK_EVT";
+
     case NFA_RW_PRESENCE_CHECK_TIMEOUT_EVT:
       return "NFA_RW_PRESENCE_CHECK_TIMEOUT_EVT";
+
     default:
       return "Unknown";
   }

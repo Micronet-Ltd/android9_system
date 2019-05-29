@@ -24,9 +24,9 @@
 #ifndef NFA_P2P_INT_H
 #define NFA_P2P_INT_H
 
-#if (NFA_P2P_INCLUDED == TRUE)
-#include "nfa_dm_int.h"
+#if (NFA_P2P_INCLUDED == true)
 #include "nfa_p2p_api.h"
+#include "nfa_dm_int.h"
 
 /*****************************************************************************
 **  Constants and data types
@@ -37,7 +37,6 @@ enum {
   NFA_P2P_LLCP_STATE_IDLE,
   NFA_P2P_LLCP_STATE_LISTENING,
   NFA_P2P_LLCP_STATE_ACTIVATED
-
 };
 
 typedef uint8_t tNFA_P2P_LLCP_STATE;
@@ -253,6 +252,7 @@ typedef struct {
       total_pending_ui_pdu; /* total number of tx UI PDU not processed by NFA */
   uint8_t
       total_pending_i_pdu; /* total number of tx I PDU not processed by NFA */
+
 } tNFA_P2P_CB;
 
 /*****************************************************************************
@@ -311,5 +311,5 @@ bool nfa_p2p_restart_rf_discovery(tNFA_P2P_MSG* p_msg);
 #define nfa_p2p_deactivate_llcp ()
 #define nfa_p2p_set_config ()
 
-#endif /* (NFA_P2P_INCLUDED == TRUE) */
+#endif /* (NFA_P2P_INCLUDED==true) */
 #endif /* NFA_P2P_INT_H */

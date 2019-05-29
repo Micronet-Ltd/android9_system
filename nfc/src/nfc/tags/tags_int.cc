@@ -22,8 +22,8 @@
  *  and Card Emulation.
  *
  ******************************************************************************/
-#include "bt_types.h"
 #include "nfc_target.h"
+#include "bt_types.h"
 
 #include "rw_api.h"
 #include "rw_int.h"
@@ -36,17 +36,21 @@ const tT1T_CMD_RSP_INFO t1t_cmd_rsp_infos[] = {
     /* Note: the order of these commands can not be changed.
      * If new events are added, add them after T1T_CMD_WRITE_NE8 */
     /*   opcode         cmd_len,  uid_offset,  rsp_len */
-    {T1T_CMD_RID, 7, 3, 6},        {T1T_CMD_RALL, 7, 3, 122},
-    {T1T_CMD_READ, 7, 3, 2},       {T1T_CMD_WRITE_E, 7, 3, 2},
-    {T1T_CMD_WRITE_NE, 7, 3, 2},   {T1T_CMD_RSEG, 14, 10, 129},
-    {T1T_CMD_READ8, 14, 10, 9},    {T1T_CMD_WRITE_E8, 14, 10, 9},
+    {T1T_CMD_RID, 7, 3, 6},
+    {T1T_CMD_RALL, 7, 3, 122},
+    {T1T_CMD_READ, 7, 3, 2},
+    {T1T_CMD_WRITE_E, 7, 3, 2},
+    {T1T_CMD_WRITE_NE, 7, 3, 2},
+    {T1T_CMD_RSEG, 14, 10, 129},
+    {T1T_CMD_READ8, 14, 10, 9},
+    {T1T_CMD_WRITE_E8, 14, 10, 9},
     {T1T_CMD_WRITE_NE8, 14, 10, 9}};
 
 const tT1T_INIT_TAG t1t_init_content[] = {
     /*  Tag Name            CC3,        is dynamic, ltv[0]  ltv[1]  ltv[2]
        mtv[0]  mtv[1]  mtv[2]*/
-    {RW_T1T_IS_TOPAZ96, 0x0E, FALSE, {0, 0, 0}, {0, 0, 0}},
-    {RW_T1T_IS_TOPAZ512, 0x3F, TRUE, {0xF2, 0x30, 0x33}, {0xF0, 0x02, 0x03}}};
+    {RW_T1T_IS_TOPAZ96, 0x0E, false, {0, 0, 0}, {0, 0, 0}},
+    {RW_T1T_IS_TOPAZ512, 0x3F, true, {0xF2, 0x30, 0x33}, {0xF0, 0x02, 0x03}}};
 
 #define T2T_MAX_NUM_OPCODES 3
 #define T2T_MAX_TAG_MODELS 7
@@ -105,7 +109,7 @@ static unsigned int tags_ones32(register unsigned int x);
 **
 *******************************************************************************/
 const tT1T_CMD_RSP_INFO* t1t_cmd_to_rsp_info(uint8_t opcode) {
-  const tT1T_CMD_RSP_INFO *p_ret = NULL, *p;
+  const tT1T_CMD_RSP_INFO* p_ret = NULL, *p;
   int xx;
 
   for (xx = 0, p = &t1t_cmd_rsp_infos[0]; xx < T1T_MAX_NUM_OPCODES; xx++, p++) {
@@ -129,7 +133,7 @@ const tT1T_CMD_RSP_INFO* t1t_cmd_to_rsp_info(uint8_t opcode) {
 **
 *******************************************************************************/
 const tT1T_INIT_TAG* t1t_tag_init_data(uint8_t tag_model) {
-  const tT1T_INIT_TAG *p_ret = NULL, *p;
+  const tT1T_INIT_TAG* p_ret = NULL, *p;
   int xx;
 
   for (xx = 0, p = &t1t_init_content[0]; xx < T1T_MAX_TAG_MODELS; xx++, p++) {
@@ -154,7 +158,7 @@ const tT1T_INIT_TAG* t1t_tag_init_data(uint8_t tag_model) {
 *******************************************************************************/
 const tT2T_INIT_TAG* t2t_tag_init_data(uint8_t manufacturer_id,
                                        bool b_valid_ver, uint16_t version_no) {
-  const tT2T_INIT_TAG *p_ret = NULL, *p;
+  const tT2T_INIT_TAG* p_ret = NULL, *p;
   int xx;
 
   for (xx = 0, p = &t2t_init_content[0]; xx < T2T_MAX_TAG_MODELS; xx++, p++) {
@@ -180,7 +184,7 @@ const tT2T_INIT_TAG* t2t_tag_init_data(uint8_t manufacturer_id,
 **
 *******************************************************************************/
 const tT2T_CMD_RSP_INFO* t2t_cmd_to_rsp_info(uint8_t opcode) {
-  const tT2T_CMD_RSP_INFO *p_ret = NULL, *p;
+  const tT2T_CMD_RSP_INFO* p_ret = NULL, *p;
   int xx;
 
   for (xx = 0, p = &t2t_cmd_rsp_infos[0]; xx < T2T_MAX_NUM_OPCODES; xx++, p++) {
@@ -286,9 +290,9 @@ int tags_pow(int x, int y) {
 *******************************************************************************/
 static unsigned int tags_ones32(register unsigned int x) {
   /* 32-bit recursive reduction using SWAR...
-     but first step is mapping 2-bit values
-     into sum of 2 1-bit values in sneaky way
-  */
+ but first step is mapping 2-bit values
+ into sum of 2 1-bit values in sneaky way
+*/
   x -= ((x >> 1) & 0x55555555);
   x = (((x >> 2) & 0x33333333) + (x & 0x33333333));
   x = (((x >> 4) + x) & 0x0f0f0f0f);

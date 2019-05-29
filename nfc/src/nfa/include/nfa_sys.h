@@ -24,9 +24,9 @@
 #ifndef NFA_SYS_H
 #define NFA_SYS_H
 
+#include "nfc_target.h"
 #include "gki.h"
 #include "nfa_api.h"
-#include "nfc_target.h"
 
 /*****************************************************************************
 **  Constants and data types
@@ -42,7 +42,7 @@ enum {
   NFA_ID_RW,   /* Reader/writer sub-system            */
   NFA_ID_CE,   /* Card-emulation sub-system           */
   NFA_ID_HCI,  /* Host controller interface sub-system*/
-#if (NFA_DTA_INCLUDED == TRUE)
+#if (NFA_DTA_INCLUDED == true)
   NFA_ID_DTA, /* Device Test Application sub-system  */
 #endif
   NFA_ID_MAX
@@ -98,6 +98,7 @@ extern void nfa_sys_init(void);
 extern void nfa_sys_event(NFC_HDR* p_msg);
 extern void nfa_sys_timer_update(void);
 extern void nfa_sys_disable_timers(void);
+extern void nfa_sys_set_trace_level(uint8_t level);
 
 extern void nfa_sys_register(uint8_t id, const tNFA_SYS_REG* p_reg);
 extern void nfa_sys_deregister(uint8_t id);
@@ -119,5 +120,8 @@ extern void nfa_sys_notify_nfcc_power_mode(uint8_t nfcc_power_mode);
 extern void nfa_sys_cback_reg_nfcc_power_mode_proc_complete(
     tNFA_SYS_PROC_NFCC_PWR_MODE_CMPL* p_cback);
 extern void nfa_sys_cback_notify_nfcc_power_mode_proc_complete(uint8_t id);
+#if (NXP_EXTNS == TRUE)
+extern void nfa_sys_cback_notify_MinEnable_complete(uint8_t id);
+#endif
 
 #endif /* NFA_SYS_H */

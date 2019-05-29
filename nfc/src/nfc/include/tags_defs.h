@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 /******************************************************************************
  *
@@ -80,7 +99,6 @@
 
 /* HRO value to indicate static Tag               */
 #define T1T_STATIC_HR0 0x11
-/* 0x1y, as long as (y!=1)                        */
 /* HR0 value is 0x1y, indicates NDEF supported    */
 #define T1T_NDEF_SUPPORTED 0x10
 /* UID block                                      */
@@ -125,7 +143,6 @@
 #define T1T_CC_RWA_RW 0x00
 /* RWA - Read only                                */
 #define T1T_CC_RWA_RO 0x0F
-
 /* Tlv len for LOCK_CTRL/MEM TLV per spec         */
 #define T1T_DEFAULT_TLV_LEN 3
 /* Tlv type identifier len                        */
@@ -173,7 +190,6 @@
 /* Lock */
 /* Number of static lock bytes in tag   */
 #define T1T_NUM_STATIC_LOCK_BYTES 2
-/* Bytes locked by one static lock bit  */
 
 /* Type 2 Tag related definitions */
 #define T2T_STATIC_SIZE 64
@@ -232,7 +248,7 @@
 #define T2T_TLEN_LOCK_CTRL_TLV 3
 
 /* Maximum number of sectors supported */
-#if (APPL_DTA_MODE == TRUE)
+#if (NXP_EXTNS==TRUE || APPL_DTA_MODE == TRUE)
 #define T2T_MAX_SECTOR 3
 #else
 #define T2T_MAX_SECTOR 2
@@ -253,11 +269,13 @@
 /* Number of static lock bytes in tag   */
 #define T2T_NUM_STATIC_LOCK_BYTES 2
 
+#define T2T_CC2_TMS_MUL 0x06
+#define T2T_CC2_TMS_MULC 0x12
 /*
-**
-**  Type 3 Tag Definitions
-**
-*/
+ **
+ **  Type 3 Tag Definitions
+ **
+ */
 
 #define T3T_SYSTEM_CODE_NDEF 0x12FC /* System Code for NDEF tags */
 /* System Code for felica-lite tags */
@@ -344,7 +362,6 @@ typedef uint8_t tT3T_POLL_RC;
 #define T3T_MSG_RSP_STATUS2_ERROR_MEMORY 0x70
 #define T3T_MSG_RSP_STATUS2_ERROR_PROCESSING 0xFF
 
-
 /* Felica Lite defintions */
 /* Block ID for MC (memory configuration)                       */
 #define T3T_MSG_FELICALITE_BLOCK_ID_MC 0x88
@@ -359,10 +376,10 @@ typedef uint8_t tT3T_POLL_RC;
 #define T3T_MSG_FELICALITE_MC_OFFSET_RF_PRM 0x04
 
 /*
-**
-**  Type 4 Tag Definitions
-**
-*/
+ **
+ **  Type 4 Tag Definitions
+ **
+ */
 #define T4T_CMD_MIN_HDR_SIZE 4 /* CLA, INS, P1, P2 */
 #define T4T_CMD_MAX_HDR_SIZE 5 /* CLA, INS, P1, P2, Lc */
 
@@ -435,6 +452,7 @@ typedef uint8_t tT3T_POLL_RC;
 #define T4T_FC_NO_WRITE_ACCESS 0xFF
 
 #define T4T_FILE_LENGTH_SIZE 0x02
+
 #define T4T_ADDI_FRAME_RESP 0xAFU
 #define T4T_SIZE_IDENTIFIER_2K 0x16U
 #define T4T_SIZE_IDENTIFIER_4K 0x18U
@@ -447,14 +465,13 @@ typedef uint8_t tT3T_POLL_RC;
 #define T4T_DES_EV0_NFC_APP_ID 0x10EEEE
 
 /*
-**
-**  ISO 15693 Tag Definitions
-**
-*/
+ **
+ **  ISO 15693 Tag Definitions
+ **
+ */
 
 /* A single sub-carrier frequency shall be used by VICC */
 #define I93_FLAG_SUB_CARRIER_SINGLE 0x00
-
 /* High data rate shall be used */
 #define I93_FLAG_DATA_RATE_HIGH 0x02
 
@@ -488,7 +505,6 @@ typedef uint8_t tT3T_POLL_RC;
 #define I93_ERROR_CODE_OPTION_NOT_SUPPORTED 0x03
 /* The specific block is was not successfully programmed                 */
 #define I93_ERROR_CODE_BLOCK_FAIL_TO_WRITE 0x13
-/* The specific block is was not successfully locked                     */
 
 /* UID length in bytes                  */
 #define I93_UID_BYTE_LEN 8
@@ -633,11 +649,11 @@ typedef uint8_t tT3T_POLL_RC;
  */
 #define I93_IC_REF_STM_M24LR64E_R 0x5E
 /* IC Reference for ST25DV04K: 00100100(b), blockSize: 4, numberBlocks: 0x80
- */
++ */
 #define I93_IC_REF_STM_ST25DV04K 0x24
 /* IC Reference for ST25DVHIK: 00100110(b), blockSize: 4, numberBlocks: 0x800
- * or 0x200
- */
++ * or 0x200
++ */
 #define I93_IC_REF_STM_ST25DVHIK 0x26
 
 #define I93_STM_BLOCKS_PER_SECTOR 32

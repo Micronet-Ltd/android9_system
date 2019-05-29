@@ -17,12 +17,12 @@
  ******************************************************************************/
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
+#include <stdlib.h>
 #include <fcntl.h>
-#include <vector>
-
-#include "CrcChecksum.h"
 #include "nfa_nv_ci.h"
 #include "nfc_hal_nv_co.h"
+#include "CrcChecksum.h"
+#include <vector>
 
 using android::base::StringPrintf;
 
@@ -89,20 +89,23 @@ extern void nfa_nv_co_read(uint8_t* pBuffer, uint16_t nbytes, uint8_t block) {
   int fileStream = open(filename.c_str(), O_RDONLY);
   if (fileStream >= 0) {
     unsigned short checksum = 0;
-    read(fileStream, &checksum, sizeof(checksum));
+    int status = read(fileStream, &checksum, sizeof(checksum));
+    if (!status) {
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: fail to read checksum", __func__);
+      close(fileStream);
+      return;
+    }
     size_t actualReadData = read(fileStream, pBuffer, nbytes);
     close(fileStream);
     if (actualReadData > 0) {
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("%s: data size=%zu", __func__, actualReadData);
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: data size=%zu", __func__, actualReadData);
       nfa_nv_ci_read(actualReadData, NFA_NV_CO_OK, block);
     } else {
       LOG(ERROR) << StringPrintf("%s: fail to read", __func__);
       nfa_nv_ci_read(0, NFA_NV_CO_FAIL, block);
     }
   } else {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("%s: fail to open", __func__);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: fail to open", __func__);
     nfa_nv_ci_read(0, NFA_NV_CO_FAIL, block);
   }
 }
@@ -130,17 +133,13 @@ extern void nfa_nv_co_write(const uint8_t* pBuffer, uint16_t nbytes,
                             uint8_t block) {
   std::string filename = getFilenameForBlock(block);
 
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-      "%s: bytes=%u; file=%s", __func__, nbytes, filename.c_str());
-
   int fileStream =
       open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
   if (fileStream >= 0) {
     unsigned short checksum = crcChecksumCompute(pBuffer, nbytes);
     size_t actualWrittenCrc = write(fileStream, &checksum, sizeof(checksum));
     size_t actualWrittenData = write(fileStream, pBuffer, nbytes);
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("%s: %zu bytes written", __func__, actualWrittenData);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: %zu bytes written", __func__, actualWrittenData);
     if ((actualWrittenData == nbytes) &&
         (actualWrittenCrc == sizeof(checksum))) {
       nfa_nv_ci_write(NFA_NV_CO_OK);
@@ -194,7 +193,6 @@ void delete_stack_non_volatile_store(bool forceDelete) {
 *******************************************************************************/
 void verify_stack_non_volatile_store() {
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s", __func__);
-
   const std::vector<unsigned> verify_blocks = {DH_NV_BLOCK, HC_F2_NV_BLOCK,
                                                HC_F3_NV_BLOCK, HC_F4_NV_BLOCK,
                                                HC_F5_NV_BLOCK};

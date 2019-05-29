@@ -15,7 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
-
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 /******************************************************************************
  *
  *  This file contains the action functions the NFA_RW state machine.
@@ -26,10 +44,11 @@
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
 
-#include "ndef_utils.h"
+#include "nfa_rw_int.h"
 #include "nfa_dm_int.h"
 #include "nfa_mem_co.h"
-#include "nfa_rw_int.h"
+#include "ndef_utils.h"
+
 
 using android::base::StringPrintf;
 
@@ -49,7 +68,7 @@ static bool nfa_rw_op_req_while_busy(tNFA_RW_MSG* p_data);
 static void nfa_rw_error_cleanup(uint8_t event);
 static void nfa_rw_presence_check(tNFA_RW_MSG* p_data);
 static void nfa_rw_handle_t2t_evt(tRW_EVENT event, tRW_DATA* p_rw_data);
-static bool nfa_rw_detect_ndef(void);
+static bool nfa_rw_detect_ndef();
 static void nfa_rw_cback(tRW_EVENT event, tRW_DATA* p_rw_data);
 
 /*******************************************************************************
@@ -80,6 +99,16 @@ void nfa_rw_free_ndef_rx_buf(void) {
 static void nfa_rw_store_ndef_rx_buf(tRW_DATA* p_rw_data) {
   uint8_t* p;
 
+  if (NULL == p_rw_data) {
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_store_ndef_rx_buf;  p_rw_data is NULL");
+    return;
+  }
+
+  if (NULL == p_rw_data->data.p_data) {
+     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+        "nfa_rw_store_ndef_rx_buf;  p_rw_data->data.p_data is NULL");
+    return;
+  }
   p = (uint8_t*)(p_rw_data->data.p_data + 1) + p_rw_data->data.p_data->offset;
 
   /* Save data into buffer */
@@ -107,10 +136,9 @@ static void nfa_rw_send_data_to_upper(tRW_DATA* p_rw_data) {
       (p_rw_data->data.p_data == NULL))
     return;
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("nfa_rw_send_data_to_upper: Len [0x%X] Status [%s]",
-                      p_rw_data->data.p_data->len,
-                      NFC_GetStatusName(p_rw_data->data.status).c_str());
+   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_send_data_to_upper: Len [0x%X] Status [%s]",
+                   p_rw_data->data.p_data->len,
+                   NFC_GetStatusName(p_rw_data->data.status).c_str());
 
   /* Notify conn cback of NFA_DATA_EVT */
   conn_evt_data.data.status = p_rw_data->data.status;
@@ -158,8 +186,7 @@ static void nfa_rw_check_start_presence_check_timer(
 
   if (nfa_rw_cb.flags & NFA_RW_FL_NOT_EXCL_RF_MODE) {
     if (presence_check_start_delay) {
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("Starting presence check timer...");
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Starting presence check timer...");
       nfa_sys_start_timer(&nfa_rw_cb.tle, NFA_RW_PRESENCE_CHECK_TICK_EVT,
                           presence_check_start_delay);
     } else {
@@ -180,8 +207,7 @@ static void nfa_rw_check_start_presence_check_timer(
 *******************************************************************************/
 void nfa_rw_stop_presence_check_timer(void) {
   nfa_sys_stop_timer(&nfa_rw_cb.tle);
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("Stopped presence check timer (if started)");
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Stopped presence check timer (if started)");
 }
 
 /*******************************************************************************
@@ -195,8 +221,7 @@ void nfa_rw_stop_presence_check_timer(void) {
 *******************************************************************************/
 static void nfa_rw_handle_ndef_detect(tRW_DATA* p_rw_data) {
   tNFA_CONN_EVT_DATA conn_evt_data;
-
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
       "NDEF Detection completed: cur_size=%i, max_size=%i, flags=0x%x",
       p_rw_data->ndef.cur_size, p_rw_data->ndef.max_size,
       p_rw_data->ndef.flags);
@@ -306,7 +331,6 @@ static void nfa_rw_handle_ndef_detect(tRW_DATA* p_rw_data) {
 *******************************************************************************/
 static void nfa_rw_handle_tlv_detect(tRW_DATA* p_rw_data) {
   tNFA_CONN_EVT_DATA conn_evt_data;
-
   /* Set TLV detection state */
   if (nfa_rw_cb.cur_op == NFA_RW_OP_SET_TAG_RO) {
     if (nfa_rw_cb.tlv_st == NFA_RW_TLV_DETECT_ST_OP_NOT_STARTED) {
@@ -324,8 +348,8 @@ static void nfa_rw_handle_tlv_detect(tRW_DATA* p_rw_data) {
 
   /* Check if TLV detection succeeded */
   if (p_rw_data->tlv.status == NFC_STATUS_OK) {
-    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-        "TLV Detection succeeded: num_bytes=%i", p_rw_data->tlv.num_bytes);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("TLV Detection succeeded: num_bytes=%i",
+                     p_rw_data->tlv.num_bytes);
 
     /* Store tlv properties */
     conn_evt_data.tlv_detect.status = NFA_STATUS_OK;
@@ -383,12 +407,12 @@ void nfa_rw_handle_sleep_wakeup_rsp(tNFC_STATUS status) {
       (nfa_rw_cb.activated_tech_mode == NFC_DISCOVERY_TYPE_POLL_A) &&
       (nfa_rw_cb.protocol == NFC_PROTOCOL_T2T) &&
       (nfa_rw_cb.pa_sel_res == NFC_SEL_RES_NFC_FORUM_T2T)) {
-    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
         "nfa_rw_handle_sleep_wakeup_rsp; Attempt to wake up Type 2 tag from "
         "HALT State is complete");
     if (status == NFC_STATUS_OK) {
       /* Type 2 Tag is wakeup from HALT state */
-      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+       DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
           "nfa_rw_handle_sleep_wakeup_rsp; Handle the NACK rsp received now");
       /* Initialize control block */
       activate_params.protocol = nfa_rw_cb.protocol;
@@ -431,12 +455,11 @@ void nfa_rw_handle_sleep_wakeup_rsp(tNFC_STATUS status) {
      * mode) then deactivate the link if sleep wakeup failed */
     if ((nfa_rw_cb.flags & NFA_RW_FL_NOT_EXCL_RF_MODE) &&
         (status != NFC_STATUS_OK)) {
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("Sleep wakeup failed. Deactivating...");
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Sleep wakeup failed. Deactivating...");
       nfa_dm_rf_deactivate(NFA_DEACTIVATE_TYPE_DISCOVERY);
     }
   } else {
-    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
         "nfa_rw_handle_sleep_wakeup_rsp; Legacy presence check performed");
     /* Legacy presence check performed */
     nfa_rw_handle_presence_check_rsp(status);
@@ -479,14 +502,14 @@ void nfa_rw_handle_presence_check_rsp(tNFC_STATUS status) {
         tNFA_CONN_EVT_DATA nfa_conn_evt_data;
         nfa_conn_evt_data.status = status;
         nfa_dm_act_conn_cback_notify(NFA_PRESENCE_CHECK_EVT,
-                                     &nfa_conn_evt_data);
+                                    &nfa_conn_evt_data);
         GKI_freebuf(nfa_rw_cb.p_pending_msg);
         nfa_rw_cb.p_pending_msg = NULL;
       }
       /* For all other APIs called during auto-presence check, perform the
          command now (if tag is still present) */
       else if (status == NFC_STATUS_OK) {
-        DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+         DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
             "Performing deferred operation after presence check...");
         p_pending_msg = (NFC_HDR*)nfa_rw_cb.p_pending_msg;
         nfa_rw_cb.p_pending_msg = NULL;
@@ -501,8 +524,7 @@ void nfa_rw_handle_presence_check_rsp(tNFC_STATUS status) {
 
     /* Auto-presence check failed. Deactivate */
     if (status != NFC_STATUS_OK) {
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("Auto presence check failed. Deactivating...");
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Auto presence check failed. Deactivating...");
       nfa_dm_rf_deactivate(NFA_DEACTIVATE_TYPE_DISCOVERY);
     }
   }
@@ -517,8 +539,7 @@ void nfa_rw_handle_presence_check_rsp(tNFC_STATUS status) {
      * presence check failed */
     if ((nfa_rw_cb.flags & NFA_RW_FL_NOT_EXCL_RF_MODE) &&
         (nfa_conn_evt_data.status != NFC_STATUS_OK)) {
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("Presence check failed. Deactivating...");
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Presence check failed. Deactivating...");
       nfa_dm_rf_deactivate(NFA_DEACTIVATE_TYPE_DISCOVERY);
     }
   }
@@ -553,7 +574,6 @@ static void nfa_rw_handle_t1t_evt(tRW_EVENT event, tRW_DATA* p_rw_data) {
         GKI_freebuf(p_rw_data->data.p_data);
         p_rw_data->data.p_data = NULL;
       }
-
       /* Command complete - perform cleanup, notify the app */
       nfa_rw_command_complete();
 
@@ -562,7 +582,6 @@ static void nfa_rw_handle_t1t_evt(tRW_EVENT event, tRW_DATA* p_rw_data) {
       } else {
         activation_status = NFA_STATUS_OK;
       }
-
       nfa_dm_notify_activation_status(activation_status, &tag_params);
       break;
 
@@ -716,8 +735,8 @@ static void nfa_rw_handle_t2t_evt(tRW_EVENT event, tRW_DATA* p_rw_data) {
   conn_evt_data.status = p_rw_data->status;
 
   if (p_rw_data->status == NFC_STATUS_REJECTED) {
-    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-        "; Waking the tag first before handling the "
+     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+        "nfa_rw_handle_t2t_evt(); Waking the tag first before handling the "
         "response!");
     /* Received NACK. Let DM wakeup the tag first (by putting tag to sleep and
      * then waking it up) */
@@ -940,7 +959,11 @@ static void nfa_rw_handle_t3t_evt(tRW_EVENT event, tRW_DATA* p_rw_data) {
         tag_params.t3t.p_system_codes = NULL;
       }
 
+#if(NXP_EXTNS == TRUE)
+      nfa_dm_notify_activation_status(p_rw_data->status, &tag_params);
+#else
       nfa_dm_notify_activation_status(NFA_STATUS_OK, &tag_params);
+#endif
       break;
 
     case RW_T3T_FORMAT_CPLT_EVT: /* Format completed */
@@ -970,8 +993,8 @@ static void nfa_rw_handle_t3t_evt(tRW_EVENT event, tRW_DATA* p_rw_data) {
       break;
 
     default:
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("; Unhandled RW event 0x%X", event);
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_handle_t3t_evt(); Unhandled RW event 0x%X",
+                       event);
       break;
   }
 }
@@ -1005,6 +1028,12 @@ static void nfa_rw_handle_t4t_evt(tRW_EVENT event, tRW_DATA* p_rw_data) {
 
       nfa_dm_act_conn_cback_notify(NFA_FORMAT_CPLT_EVT, &conn_evt_data);
       break;
+#if (NXP_EXTNS == TRUE)
+    case RW_T3BT_RAW_READ_CPLT_EVT:
+      nfa_rw_command_complete();
+      nfa_dm_act_conn_cback_notify(NFA_ACTIVATED_EVT, &conn_evt_data);
+      break;
+#endif
 
     case RW_T4T_NDEF_READ_EVT: /* Segment of data received from type 4 tag */
       if (nfa_rw_cb.cur_op == NFA_RW_OP_READ_NDEF) {
@@ -1082,6 +1111,14 @@ static void nfa_rw_handle_t4t_evt(tRW_EVENT event, tRW_DATA* p_rw_data) {
       }
       break;
 
+#if (NXP_EXTNS == TRUE)
+    case RW_T4T_RAW_FRAME_RF_WTX_EVT:
+      /* Stop the presence check timer */
+      nfa_rw_stop_presence_check_timer();
+      nfa_rw_check_start_presence_check_timer(NFA_RW_PRESENCE_CHECK_INTERVAL);
+      break;
+#endif
+
     case RW_T4T_SET_TO_RO_EVT: /* Tag is set as read only          */
       conn_evt_data.status = p_rw_data->status;
       nfa_dm_act_conn_cback_notify(NFA_SET_TAG_RO_EVT, &conn_evt_data);
@@ -1103,8 +1140,8 @@ static void nfa_rw_handle_t4t_evt(tRW_EVENT event, tRW_DATA* p_rw_data) {
       break;
 
     default:
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("; Unhandled RW event 0x%X", event);
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_handle_t4t_evt(); Unhandled RW event 0x%X",
+                       event);
       break;
   }
 }
@@ -1377,12 +1414,29 @@ static void nfa_rw_handle_i93_evt(tRW_EVENT event, tRW_DATA* p_rw_data) {
       break;
 
     default:
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("; Unhandled RW event 0x%X", event);
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_handle_i93_evt(); Unhandled RW event 0x%X",
+                       event);
       break;
   }
 }
+#if (NXP_EXTNS == TRUE)
+static void nfa_rw_handle_t3bt_evt(tRW_EVENT event, __attribute__((unused)) tRW_DATA* p_rw_data) {
 
+  // tNFC_ACTIVATE_DEVT *activate_ntf =
+  // (tNFC_ACTIVATE_DEVT*)nfa_dm_cb.p_activate_ntf;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_handle_t3bt_evt:");
+
+  switch (event) {
+    case RW_T3BT_RAW_READ_CPLT_EVT:
+      nfa_rw_command_complete();
+      break;
+    default:
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_handle_t3bt_evt: default event");
+      break;
+  }
+  nfa_dm_notify_activation_status(NFA_STATUS_OK, NULL);
+}
+#endif
 /*******************************************************************************
 **
 ** Function         nfa_rw_cback
@@ -1393,9 +1447,11 @@ static void nfa_rw_handle_i93_evt(tRW_EVENT event, tRW_DATA* p_rw_data) {
 **
 *******************************************************************************/
 static void nfa_rw_cback(tRW_EVENT event, tRW_DATA* p_rw_data) {
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("nfa_rw_cback: event=0x%02x", event);
-
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_cback: event=0x%02x", event);
+  if (NULL == p_rw_data) {
+    LOG(ERROR) << StringPrintf("nfa_rw_cback: p_rw_data is NULL");
+    return;
+  }
   /* Call appropriate event handler for tag type */
   if (event < RW_T1T_MAX_EVT) {
     /* Handle Type-1 tag events */
@@ -1412,8 +1468,15 @@ static void nfa_rw_cback(tRW_EVENT event, tRW_DATA* p_rw_data) {
   } else if (event < RW_I93_MAX_EVT) {
     /* Handle ISO 15693 tag events */
     nfa_rw_handle_i93_evt(event, p_rw_data);
-  } else {
-    LOG(ERROR) << StringPrintf("nfa_rw_cback: unhandled event=0x%02x", event);
+  }
+#if (NXP_EXTNS == TRUE)
+  else if (event < RW_T3BT_MAX_EVT) {
+    /* Handle ISO 14443-3B tag events */
+    nfa_rw_handle_t3bt_evt(event, p_rw_data);
+  }
+#endif
+  else {
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_cback: unhandled event=0x%02x", event);
   }
 }
 
@@ -1441,8 +1504,8 @@ static tNFC_STATUS nfa_rw_start_ndef_detection(void) {
   } else if (NFC_PROTOCOL_T3T == protocol) {
     /* Type3Tag    - NFC-F */
     status = RW_T3tDetectNDef();
-  } else if (NFC_PROTOCOL_ISO_DEP == protocol) {
-    /* ISODEP/4A,4B- NFC-A or NFC-B */
+  } else if (NFC_PROTOCOL_ISO_DEP ==
+             protocol) { /* ISODEP/4A,4B- NFC-A or NFC-B */
     status = RW_T4tDetectNDef();
   } else if (NFC_PROTOCOL_T5T == protocol) {
     /* ISO 15693 */
@@ -1468,8 +1531,7 @@ static tNFC_STATUS nfa_rw_start_ndef_read(void) {
 
   /* Handle zero length NDEF message */
   if (nfa_rw_cb.ndef_cur_size == 0) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("NDEF message is zero-length");
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NDEF message is zero-length");
 
     /* Send zero-lengh NDEF message to ndef callback */
     nfa_dm_ndef_handle_message(NFA_STATUS_OK, NULL, 0);
@@ -1486,9 +1548,8 @@ static tNFC_STATUS nfa_rw_start_ndef_read(void) {
   nfa_rw_free_ndef_rx_buf();
   nfa_rw_cb.p_ndef_buf = (uint8_t*)nfa_mem_co_alloc(nfa_rw_cb.ndef_cur_size);
   if (nfa_rw_cb.p_ndef_buf == NULL) {
-    LOG(ERROR) << StringPrintf(
-        "Unable to allocate a buffer for reading NDEF (size=%i)",
-        nfa_rw_cb.ndef_cur_size);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Unable to allocate a buffer for reading NDEF (size=%i)",
+                     nfa_rw_cb.ndef_cur_size);
 
     /* Command complete - perform cleanup, notify app */
     nfa_rw_command_complete();
@@ -1498,27 +1559,23 @@ static tNFC_STATUS nfa_rw_start_ndef_read(void) {
   }
   nfa_rw_cb.ndef_rd_offset = 0;
 
-  if (NFC_PROTOCOL_T1T == protocol) {
-    /* Type1Tag    - NFC-A */
+  if (NFC_PROTOCOL_T1T == protocol) { /* Type1Tag    - NFC-A */
     status =
         RW_T1tReadNDef(nfa_rw_cb.p_ndef_buf, (uint16_t)nfa_rw_cb.ndef_cur_size);
-  } else if (NFC_PROTOCOL_T2T == protocol) {
-    /* Type2Tag    - NFC-A */
+  } else if (NFC_PROTOCOL_T2T == protocol) { /* Type2Tag    - NFC-A */
     if (nfa_rw_cb.pa_sel_res == NFC_SEL_RES_NFC_FORUM_T2T) {
       status = RW_T2tReadNDef(nfa_rw_cb.p_ndef_buf,
                               (uint16_t)nfa_rw_cb.ndef_cur_size);
     }
-  } else if (NFC_PROTOCOL_T3T == protocol) {
-    /* Type3Tag    - NFC-F */
+  } else if (NFC_PROTOCOL_T3T == protocol) { /* Type3Tag    - NFC-F */
     status = RW_T3tCheckNDef();
-  } else if (NFC_PROTOCOL_ISO_DEP == protocol) {
-    /* ISODEP/4A,4B- NFC-A or NFC-B */
+  } else if (NFC_PROTOCOL_ISO_DEP ==
+             protocol) { /* ISODEP/4A,4B- NFC-A or NFC-B */
     status = RW_T4tReadNDef();
   } else if (NFC_PROTOCOL_T5T == protocol) {
     /* ISO 15693 */
     status = RW_I93ReadNDef();
   }
-
   return (status);
 }
 
@@ -1528,12 +1585,12 @@ static tNFC_STATUS nfa_rw_start_ndef_read(void) {
 **
 ** Description      Handler for NFA_RW_API_DETECT_NDEF_EVT
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_detect_ndef() {
   tNFA_CONN_EVT_DATA conn_evt_data;
-  DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_detect_ndef");
 
   conn_evt_data.ndef_detect.status = nfa_rw_start_ndef_detection();
   if (conn_evt_data.ndef_detect.status != NFC_STATUS_OK) {
@@ -1572,21 +1629,18 @@ static tNFC_STATUS nfa_rw_start_ndef_write(void) {
         "Unable to write NDEF. Tag maxsize=%i, request write size=%i",
         nfa_rw_cb.ndef_max_size, nfa_rw_cb.ndef_wr_len);
   } else {
-    if (NFC_PROTOCOL_T1T == protocol) {
-      /* Type1Tag    - NFC-A */
+    if (NFC_PROTOCOL_T1T == protocol) { /* Type1Tag    - NFC-A */
       status = RW_T1tWriteNDef((uint16_t)nfa_rw_cb.ndef_wr_len,
                                nfa_rw_cb.p_ndef_wr_buf);
-    } else if (NFC_PROTOCOL_T2T == protocol) {
-      /* Type2Tag    - NFC-A */
+    } else if (NFC_PROTOCOL_T2T == protocol) { /* Type2Tag    - NFC-A */
       if (nfa_rw_cb.pa_sel_res == NFC_SEL_RES_NFC_FORUM_T2T) {
         status = RW_T2tWriteNDef((uint16_t)nfa_rw_cb.ndef_wr_len,
                                  nfa_rw_cb.p_ndef_wr_buf);
       }
-    } else if (NFC_PROTOCOL_T3T == protocol) {
-      /* Type3Tag    - NFC-F */
+    } else if (NFC_PROTOCOL_T3T == protocol) { /* Type3Tag    - NFC-F */
       status = RW_T3tUpdateNDef(nfa_rw_cb.ndef_wr_len, nfa_rw_cb.p_ndef_wr_buf);
-    } else if (NFC_PROTOCOL_ISO_DEP == protocol) {
-      /* ISODEP/4A,4B- NFC-A or NFC-B */
+    } else if (NFC_PROTOCOL_ISO_DEP ==
+               protocol) { /* ISODEP/4A,4B- NFC-A or NFC-B */
       status = RW_T4tUpdateNDef((uint16_t)nfa_rw_cb.ndef_wr_len,
                                 nfa_rw_cb.p_ndef_wr_buf);
     } else if (NFC_PROTOCOL_T5T == protocol) {
@@ -1605,14 +1659,14 @@ static tNFC_STATUS nfa_rw_start_ndef_write(void) {
 **
 ** Description      Handler for NFA_RW_API_READ_NDEF_EVT
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_read_ndef() {
   tNFA_STATUS status = NFA_STATUS_OK;
   tNFA_CONN_EVT_DATA conn_evt_data;
 
-  DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_read_ndef");
 
   /* Check if ndef detection has been performed yet */
   if (nfa_rw_cb.ndef_st == NFA_RW_NDEF_ST_UNKNOWN) {
@@ -1643,21 +1697,21 @@ static bool nfa_rw_read_ndef() {
 **
 ** Description      Handler for NFA_RW_API_WRITE_NDEF_EVT
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_write_ndef(tNFA_RW_MSG* p_data) {
   tNDEF_STATUS ndef_status;
   tNFA_STATUS write_status = NFA_STATUS_OK;
   tNFA_CONN_EVT_DATA conn_evt_data;
-  DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_write_ndef");
 
   /* Validate NDEF message */
   ndef_status = NDEF_MsgValidate(p_data->op_req.params.write_ndef.p_data,
                                  p_data->op_req.params.write_ndef.len, false);
   if (ndef_status != NDEF_OK) {
-    LOG(ERROR) << StringPrintf(
-        "Invalid NDEF message. NDEF_MsgValidate returned %i", ndef_status);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Invalid NDEF message. NDEF_MsgValidate returned %i",
+                     ndef_status);
 
     /* Command complete - perform cleanup, notify app */
     nfa_rw_command_complete();
@@ -1749,8 +1803,8 @@ void nfa_rw_presence_check(tNFA_RW_MSG* p_data) {
         }
         break;
       default:
-        /* empty I block */
-        option = RW_T4T_CHK_EMPTY_I_BLOCK;
+      /* empty I block */
+      option = RW_T4T_CHK_EMPTY_I_BLOCK;
     }
 
     if (option != NFA_RW_OPTION_INVALID) {
@@ -1795,15 +1849,14 @@ void nfa_rw_presence_check(tNFA_RW_MSG* p_data) {
 ** Description      Called on expiration of NFA_RW_PRESENCE_CHECK_INTERVAL
 **                  Initiate presence check
 **
-** Returns          TRUE (caller frees message buffer)
+** Returns          true (caller frees message buffer)
 **
 *******************************************************************************/
 bool nfa_rw_presence_check_tick(__attribute__((unused)) tNFA_RW_MSG* p_data) {
   /* Store the current operation */
   nfa_rw_cb.cur_op = NFA_RW_OP_PRESENCE_CHECK;
   nfa_rw_cb.flags |= NFA_RW_FL_AUTO_PRESENCE_CHECK_BUSY;
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("Auto-presence check starting...");
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Auto-presence check starting...");
 
   /* Perform presence check */
   nfa_rw_presence_check(NULL);
@@ -1817,11 +1870,10 @@ bool nfa_rw_presence_check_tick(__attribute__((unused)) tNFA_RW_MSG* p_data) {
 **
 ** Description      presence check timeout: report presence check failure
 **
-** Returns          TRUE (caller frees message buffer)
+** Returns          true (caller frees message buffer)
 **
 *******************************************************************************/
-bool nfa_rw_presence_check_timeout(__attribute__((unused))
-                                   tNFA_RW_MSG* p_data) {
+bool nfa_rw_presence_check_timeout(__attribute__((unused)) tNFA_RW_MSG* p_data) {
   nfa_rw_handle_presence_check_rsp(NFC_STATUS_FAILED);
   return true;
 }
@@ -1862,11 +1914,12 @@ static void nfa_rw_format_tag() {
 **
 ** Description      Handler for NFA_RW_API_DETECT_NDEF_EVT
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_detect_tlv(uint8_t tlv) {
-  DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_detect_tlv");
 
   switch (nfa_rw_cb.protocol) {
     case NFC_PROTOCOL_T1T:
@@ -1894,17 +1947,16 @@ static bool nfa_rw_detect_tlv(uint8_t tlv) {
 **
 ** Description      Handler for NFA_RW_OP_SET_TAG_RO
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static tNFC_STATUS nfa_rw_config_tag_ro(bool b_hard_lock) {
   tNFC_PROTOCOL protocol = nfa_rw_cb.protocol;
   tNFC_STATUS status = NFC_STATUS_FAILED;
 
-  DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_config_tag_ro ()");
 
-  if (NFC_PROTOCOL_T1T == protocol) {
-    /* Type1Tag    - NFC-A */
+  if (NFC_PROTOCOL_T1T == protocol) { /* Type1Tag    - NFC-A */
     if ((nfa_rw_cb.tlv_st == NFA_RW_TLV_DETECT_ST_OP_NOT_STARTED) ||
         (nfa_rw_cb.tlv_st == NFA_RW_TLV_DETECT_ST_MEM_TLV_OP_COMPLETE)) {
       status = RW_T1tLocateTlv(TAG_LOCK_CTRL_TLV);
@@ -1912,8 +1964,7 @@ static tNFC_STATUS nfa_rw_config_tag_ro(bool b_hard_lock) {
     } else {
       status = RW_T1tSetTagReadOnly(b_hard_lock);
     }
-  } else if (NFC_PROTOCOL_T2T == protocol) {
-    /* Type2Tag    - NFC-A */
+  } else if (NFC_PROTOCOL_T2T == protocol) { /* Type2Tag    - NFC-A */
     if (nfa_rw_cb.pa_sel_res == NFC_SEL_RES_NFC_FORUM_T2T) {
       status = RW_T2tSetTagReadOnly(b_hard_lock);
     }
@@ -1943,10 +1994,11 @@ static tNFC_STATUS nfa_rw_config_tag_ro(bool b_hard_lock) {
 **
 ** Description      Handler for T1T_RID API
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_t1t_rid() {
+
   if (RW_T1tRid() != NFC_STATUS_OK) nfa_rw_error_cleanup(NFA_READ_CPLT_EVT);
 
   return true;
@@ -1958,10 +2010,11 @@ static bool nfa_rw_t1t_rid() {
 **
 ** Description      Handler for T1T_ReadAll API
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_t1t_rall() {
+
   if (RW_T1tReadAll() != NFC_STATUS_OK) nfa_rw_error_cleanup(NFA_READ_CPLT_EVT);
 
   return true;
@@ -1973,7 +2026,7 @@ static bool nfa_rw_t1t_rall() {
 **
 ** Description      Handler for T1T_Read API
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_t1t_read(tNFA_RW_MSG* p_data) {
@@ -1992,7 +2045,7 @@ static bool nfa_rw_t1t_read(tNFA_RW_MSG* p_data) {
 **
 ** Description      Handler for T1T_WriteErase/T1T_WriteNoErase API
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_t1t_write(tNFA_RW_MSG* p_data) {
@@ -2024,7 +2077,7 @@ static bool nfa_rw_t1t_write(tNFA_RW_MSG* p_data) {
 **
 ** Description      Handler for T1t_ReadSeg API
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_t1t_rseg(tNFA_RW_MSG* p_data) {
@@ -2043,7 +2096,7 @@ static bool nfa_rw_t1t_rseg(tNFA_RW_MSG* p_data) {
 **
 ** Description      Handler for T1T_Read8 API
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_t1t_read8(tNFA_RW_MSG* p_data) {
@@ -2062,7 +2115,7 @@ static bool nfa_rw_t1t_read8(tNFA_RW_MSG* p_data) {
 **
 ** Description      Handler for T1T_WriteErase8/T1T_WriteNoErase8 API
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_t1t_write8(tNFA_RW_MSG* p_data) {
@@ -2094,7 +2147,7 @@ static bool nfa_rw_t1t_write8(tNFA_RW_MSG* p_data) {
 **
 ** Description      Handler for T2T_Read API
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_t2t_read(tNFA_RW_MSG* p_data) {
@@ -2116,7 +2169,7 @@ static bool nfa_rw_t2t_read(tNFA_RW_MSG* p_data) {
 **
 ** Description      Handler for T2T_Write API
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_t2t_write(tNFA_RW_MSG* p_data) {
@@ -2140,7 +2193,7 @@ static bool nfa_rw_t2t_write(tNFA_RW_MSG* p_data) {
 **
 ** Description      Handler for T2T_Sector_Select API
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_t2t_sector_select(tNFA_RW_MSG* p_data) {
@@ -2160,7 +2213,7 @@ static bool nfa_rw_t2t_sector_select(tNFA_RW_MSG* p_data) {
 **
 ** Description      Handler for T3T_Read API
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_t3t_read(tNFA_RW_MSG* p_data) {
@@ -2180,7 +2233,7 @@ static bool nfa_rw_t3t_read(tNFA_RW_MSG* p_data) {
 **
 ** Description      Handler for T3T_Write API
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_t3t_write(tNFA_RW_MSG* p_data) {
@@ -2201,7 +2254,7 @@ static bool nfa_rw_t3t_write(tNFA_RW_MSG* p_data) {
 **
 ** Description      Get system codes (initiated by NFA after activation)
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_t3t_get_system_codes() {
@@ -2222,13 +2275,27 @@ static bool nfa_rw_t3t_get_system_codes() {
   return true;
 }
 
+#if (NXP_EXTNS == TRUE)
+static bool nfa_rw_t3bt_get_pupi(__attribute__((unused)) tNFA_RW_MSG* p_data) {
+  tNFC_STATUS status;
+
+  status = RW_T3BtGetPupiID();
+
+  if (status != NFC_STATUS_OK) {
+    nfa_rw_command_complete();
+  }
+
+  return true;
+}
+#endif
+
 /*******************************************************************************
 **
 ** Function         nfa_rw_i93_command
 **
 ** Description      Handler for ISO 15693 command
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 static bool nfa_rw_i93_command(tNFA_RW_MSG* p_data) {
@@ -2362,11 +2429,11 @@ static bool nfa_rw_i93_command(tNFA_RW_MSG* p_data) {
 **
 *******************************************************************************/
 static void nfa_rw_raw_mode_data_cback(__attribute__((unused)) uint8_t conn_id,
-                                       tNFC_CONN_EVT event, tNFC_CONN* p_data) {
+                                        tNFC_CONN_EVT event, tNFC_CONN* p_data) {
   NFC_HDR* p_msg;
   tNFA_CONN_EVT_DATA evt_data;
 
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("event = 0x%X", event);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_raw_mode_data_cback(): event = 0x%X", event);
 
   if ((event == NFC_DATA_CEVT) &&
       ((p_data->data.status == NFC_STATUS_OK) ||
@@ -2383,7 +2450,8 @@ static void nfa_rw_raw_mode_data_cback(__attribute__((unused)) uint8_t conn_id,
       GKI_freebuf(p_msg);
     } else {
       LOG(ERROR) << StringPrintf(
-          "received NFC_DATA_CEVT with NULL data pointer");
+          "nfa_rw_raw_mode_data_cback (): received NFC_DATA_CEVT with NULL "
+          "data pointer");
     }
   } else if (event == NFC_DEACTIVATE_CEVT) {
     NFC_SetStaticRfCback(NULL);
@@ -2396,7 +2464,7 @@ static void nfa_rw_raw_mode_data_cback(__attribute__((unused)) uint8_t conn_id,
 **
 ** Description      Handler for NFA_RW_ACTIVATE_NTF
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 bool nfa_rw_activate_ntf(tNFA_RW_MSG* p_data) {
@@ -2415,12 +2483,12 @@ bool nfa_rw_activate_ntf(tNFA_RW_MSG* p_data) {
       GKI_freebuf(nfa_dm_cb.p_activate_ntf);
       nfa_dm_cb.p_activate_ntf = NULL;
     }
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("- Type 2 tag wake up from HALT State");
+     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+        "nfa_rw_activate_ntf () - Type 2 tag wake up from HALT State");
     return true;
   }
 
-  DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_activate_ntf");
 
   /* Initialize control block */
   nfa_rw_cb.protocol = p_activate_params->protocol;
@@ -2447,7 +2515,11 @@ bool nfa_rw_activate_ntf(tNFA_RW_MSG* p_data) {
     if ((p_activate_params->protocol != NFA_PROTOCOL_T1T) &&
         (p_activate_params->protocol != NFA_PROTOCOL_T2T) &&
         (p_activate_params->protocol != NFA_PROTOCOL_T3T) &&
-        (p_activate_params->protocol != NFA_PROTOCOL_T5T)) {
+        (p_activate_params->protocol != NFA_PROTOCOL_T5T)
+#if (NXP_EXTNS == TRUE)
+        && (p_activate_params->protocol != NFA_PROTOCOL_T3BT)
+#endif
+            ) {
       nfa_rw_cb.protocol = NFA_PROTOCOL_INVALID;
     }
   } else if (p_activate_params->intf_param.type == NCI_INTERFACE_ISO_DEP) {
@@ -2507,7 +2579,9 @@ bool nfa_rw_activate_ntf(tNFA_RW_MSG* p_data) {
              NFA_T1T_HR_LEN);
       tNFA_RW_MSG msg;
       msg.op_req.op = NFA_RW_OP_T1T_RID;
-      nfa_rw_handle_op_req(&msg);
+      bool free_buf = nfa_rw_handle_op_req(&msg);
+      CHECK(free_buf)
+          << "nfa_rw_handle_op_req is holding on to soon-garbage stack memory.";
       /* Delay notifying upper layer of NFA_ACTIVATED_EVT
          until HR0/HR1 is received */
       activate_notify = false;
@@ -2529,9 +2603,23 @@ bool nfa_rw_activate_ntf(tNFA_RW_MSG* p_data) {
       /* Issue command to get Felica system codes */
       tNFA_RW_MSG msg;
       msg.op_req.op = NFA_RW_OP_T3T_GET_SYSTEM_CODES;
-      nfa_rw_handle_op_req(&msg);
+      bool free_buf = nfa_rw_handle_op_req(&msg);
+      CHECK(free_buf)
+          << "nfa_rw_handle_op_req is holding on to soon-garbage stack memory.";
     }
-  } else if (NFA_PROTOCOL_T5T == nfa_rw_cb.protocol) {
+  }
+#if (NXP_EXTNS == TRUE)
+  else if (NFC_PROTOCOL_T3BT == nfa_rw_cb.protocol) {
+
+    activate_notify =
+        false; /* Delay notifying upper layer of NFA_ACTIVATED_EVT until system
+                  codes are retrieved */
+    tNFA_RW_MSG msg;
+    msg.op_req.op = NFA_RW_OP_T3BT_PUPI;
+    nfa_rw_handle_op_req(&msg);
+  }
+#endif
+  else if (NFC_PROTOCOL_T5T == nfa_rw_cb.protocol) {
     /* Delay notifying upper layer of NFA_ACTIVATED_EVT to retrieve additional
      * tag infomation */
     nfa_rw_cb.flags |= NFA_RW_FL_ACTIVATION_NTF_PENDING;
@@ -2614,7 +2702,7 @@ bool nfa_rw_activate_ntf(tNFA_RW_MSG* p_data) {
 **
 ** Description      Handler for NFA_RW_DEACTIVATE_NTF
 **
-** Returns          TRUE (message buffer to be freed by caller)
+** Returns          true (message buffer to be freed by caller)
 **
 *******************************************************************************/
 bool nfa_rw_deactivate_ntf(__attribute__((unused)) tNFA_RW_MSG* p_data) {
@@ -2655,8 +2743,8 @@ bool nfa_rw_deactivate_ntf(__attribute__((unused)) tNFA_RW_MSG* p_data) {
 **
 ** Description      Handler for NFA_RW_OP_REQUEST_EVT, operation request
 **
-** Returns          TRUE if caller should free p_data
-**                  FALSE if caller does not need to free p_data
+** Returns          true if caller should free p_data
+**                  false if caller does not need to free p_data
 **
 *******************************************************************************/
 bool nfa_rw_handle_op_req(tNFA_RW_MSG* p_data) {
@@ -2676,16 +2764,15 @@ bool nfa_rw_handle_op_req(tNFA_RW_MSG* p_data) {
   else if (nfa_rw_cb.flags & NFA_RW_FL_AUTO_PRESENCE_CHECK_BUSY) {
     /* Cache the command (will be handled once auto-presence check is completed)
      */
-    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
         "Deferring operation %i until after auto-presence check is completed",
         p_data->op_req.op);
     nfa_rw_cb.p_pending_msg = p_data;
     nfa_rw_cb.flags |= NFA_RW_FL_API_BUSY;
-    return false;
+    return (false);
   }
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("nfa_rw_handle_op_req: op=0x%02x", p_data->op_req.op);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_handle_op_req: op=0x%02x", p_data->op_req.op);
 
   nfa_rw_cb.flags |= NFA_RW_FL_API_BUSY;
 
@@ -2817,9 +2904,15 @@ bool nfa_rw_handle_op_req(tNFA_RW_MSG* p_data) {
       nfa_rw_i93_command(p_data);
       break;
 
+#if (NXP_EXTNS == TRUE)
+    case NFA_RW_OP_T3BT_PUPI:
+      nfa_rw_t3bt_get_pupi(p_data);
+      break;
+#endif
+
     default:
-      LOG(ERROR) << StringPrintf("nfa_rw_handle_api: unhandled operation: %i",
-                                 p_data->op_req.op);
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_handle_api: unhandled operation: %i",
+                       p_data->op_req.op);
       break;
   }
 
@@ -2832,8 +2925,8 @@ bool nfa_rw_handle_op_req(tNFA_RW_MSG* p_data) {
 **
 ** Description      Handle operation request while busy
 **
-** Returns          TRUE if caller should free p_data
-**                  FALSE if caller does not need to free p_data
+** Returns          true if caller should free p_data
+**                  false if caller does not need to free p_data
 **
 *******************************************************************************/
 static bool nfa_rw_op_req_while_busy(tNFA_RW_MSG* p_data) {
@@ -2925,3 +3018,31 @@ void nfa_rw_command_complete(void) {
   /* Restart presence_check timer */
   nfa_rw_check_start_presence_check_timer(NFA_RW_PRESENCE_CHECK_INTERVAL);
 }
+
+#if (NXP_EXTNS == TRUE)
+void nfa_rw_set_cback(tNFC_DISCOVER* p_data) {
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_set_cback:");
+  if ((p_data != NULL) &&
+      !nfa_dm_is_protocol_supported(
+          p_data->activate.protocol,
+          p_data->activate.rf_tech_param.param.pa.sel_rsp)) {
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_set_cback: nfa_rw_raw_mode_data_cback");
+    /* Set data callback (pass all incoming data to upper layer using
+     * NFA_DATA_EVT) */
+    NFC_SetStaticRfCback(nfa_rw_raw_mode_data_cback);
+  }
+}
+
+void nfa_rw_update_pupi_id(uint8_t* p, uint8_t len) {
+  tNFC_ACTIVATE_DEVT* activate_ntf =
+      (tNFC_ACTIVATE_DEVT*)nfa_dm_cb.p_activate_ntf;
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_update_pupi_id:");
+  if (len != 0) {
+    activate_ntf->rf_tech_param.param.pb.pupiid_len = len;
+    memcpy(activate_ntf->rf_tech_param.param.pb.pupiid, p, len);
+  } else {
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_rw_update_pupi_id: invalid resp_len=%d", len);
+  }
+}
+#endif

@@ -15,7 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
-
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 /******************************************************************************
  *
  *  NFA interface to NFCEE
@@ -24,15 +42,26 @@
 #ifndef NFA_EE_API_H
 #define NFA_EE_API_H
 
+#include "nfc_target.h"
 #include "nfa_api.h"
 #include "nfc_api.h"
-#include "nfc_target.h"
 
 /*****************************************************************************
 **  Constants and data types
 *****************************************************************************/
 /* 16 per ISO 7816 specification    */
 #define NFA_MAX_AID_LEN NFC_MAX_AID_LEN
+#define NFA_MAX_APDU_DATA_LEN NFC_MAX_APDU_DATA_LEN
+#define NFA_MAX_APDU_MASK_LEN NFC_MAX_APDU_MASK_LEN
+
+#define NFA_EE_HANDLE_DH (NFA_HANDLE_GROUP_EE | NFC_DH_ID)
+#if (NXP_EXTNS == TRUE)
+extern uint8_t NFA_REMOVE_ALL_AID[];
+#define NFA_REMOVE_ALL_AID_LEN (0x08)
+extern uint8_t nfa_ee_ce_route_strict_disable;
+extern uint8_t nfa_ee_ce_p61_active;
+#define NFA_EE_AE_NXP_PREFIX_MATCH (0x10)
+#endif
 
 /* NFA EE callback events */
 enum {
@@ -62,7 +91,14 @@ enum {
   NFA_EE_ACTION_EVT, /* An action happened in NFCEE                           */
   NFA_EE_DISCOVER_REQ_EVT, /* NFCEE Discover Request Notification */
   NFA_EE_NO_MEM_ERR_EVT,   /* Error - out of GKI buffers */
-  NFA_EE_NO_CB_ERR_EVT /* Error - Can not find control block or wrong state */
+  NFA_EE_NO_CB_ERR_EVT, /* Error - Can not find control block or wrong state */
+#if (NXP_EXTNS == TRUE)
+  NFA_EE_ROUT_ERR_EVT,     /* Error - exceed NFCC CE Routing size */
+  NFA_EE_SET_MODE_INFO_EVT,
+  NFA_EE_PWR_LINK_CTRL_EVT, /* NFCEE Pwr and link cotnrol command Evt */
+#endif
+  NFA_EE_ADD_APDU_EVT,  /* The status for adding an APDU pattern to a routing table entry*/
+  NFA_EE_REMOVE_APDU_EVT /* The status for removing an APDU pattern from a routing table */
 };
 typedef uint8_t tNFA_EE_EVT;
 
@@ -71,7 +107,13 @@ typedef uint8_t tNFA_EE_EVT;
 #define NFA_EE_INTERFACE_HCI_ACCESS NFC_NFCEE_INTERFACE_HCI_ACCESS
 typedef uint8_t tNFA_EE_INTERFACE;
 
+#if (NXP_EXTNS == TRUE)
+/* Broadcom Proprietary */
+#define NFA_EE_TAG_HCI_HOST_ID NFC_NFCEE_TAG_HCI_HOST_ID
+typedef uint16_t tNFA_EE_TAG;
+#else
 typedef uint8_t tNFA_EE_TAG;
+#endif
 
 /* for NFA_EeModeSet () */
 #define NFA_EE_MD_ACTIVATE NFC_MODE_ACTIVATE
@@ -84,6 +126,7 @@ typedef uint8_t tNFA_EE_MD;
 #define NFA_EE_PWR_STATE_SWITCH_OFF 0x02
 /* The device's battery is removed  */
 #define NFA_EE_PWR_STATE_BATT_OFF 0x04
+
 typedef uint8_t tNFA_EE_PWR_STATE;
 
 /* NFCEE connected and inactive */
@@ -95,6 +138,18 @@ typedef uint8_t tNFA_EE_PWR_STATE;
 /* waiting for response from NFCC */
 #define NFA_EE_STATUS_PENDING 0x10
 typedef uint8_t tNFA_EE_STATUS;
+
+/* list of events for controlling DWP transceive state */
+typedef enum {
+  NFCC_RF_FIELD_EVT,
+  NFCC_ACTIVATED_NTF,
+  NFCC_DEACTIVATED_NTF,
+  NFCC_ACTION_NTF,
+  NFCC_CE_DATA_EVT,
+#if (NXP_EXTNS == TRUE)
+  NFCC_RF_TIMEOUT_EVT
+#endif
+} tNFCC_EVTS_NTF;
 
 /* additional NFCEE Info */
 typedef struct {
@@ -111,7 +166,13 @@ typedef struct {
       ee_interface[NFC_MAX_EE_INTERFACE]; /* NFCEE supported interface */
   uint8_t num_tlvs;                       /* number of TLVs           */
   tNFA_EE_TLV ee_tlv[NFC_MAX_EE_TLVS];    /* the TLV                  */
-  uint8_t ee_power_supply_status;         /* The NFCEE Power supply */
+  uint8_t  ee_power_supply_status;/* The NFCEE Power supply */
+#if (NXP_EXTNS == TRUE)
+  tNFA_NFC_PROTOCOL la_protocol;  /* Listen A protocol    */
+  tNFA_NFC_PROTOCOL lb_protocol;  /* Listen B protocol    */
+  tNFA_NFC_PROTOCOL lf_protocol;  /* Listen F protocol    */
+  tNFA_NFC_PROTOCOL lbp_protocol; /* Listen B' protocol   */
+#endif
 } tNFA_EE_INFO;
 
 typedef struct {
@@ -153,12 +214,27 @@ typedef struct {
   tNFA_EE_STATUS ee_status; /* The NFCEE status             */
 } tNFA_EE_MODE_SET;
 
+#if (NXP_EXTNS == TRUE)
+typedef struct {
+  tNFA_STATUS status;
+  uint8_t nfcee_id;
+} tNFA_EE_SET_MODE_INFO;
+typedef struct {
+  tNFA_STATUS status;       /* NFA_STATUS_OK is successful  */
+  tNFA_EE_STATUS ee_status; /* The NFCEE status             */
+} tNFA_EE_PWR_LNK_CTRL;
+#endif
 typedef struct {
   tNFA_HANDLE ee_handle;          /* Handle of MFCEE      */
   tNFA_NFC_PROTOCOL la_protocol;  /* Listen A protocol    */
   tNFA_NFC_PROTOCOL lb_protocol;  /* Listen B protocol    */
   tNFA_NFC_PROTOCOL lf_protocol;  /* Listen F protocol    */
   tNFA_NFC_PROTOCOL lbp_protocol; /* Listen B' protocol   */
+#if (NXP_EXTNS == TRUE)
+  tNFA_NFC_PROTOCOL pa_protocol; /* Passive poll A SWP Reader   */
+  tNFA_NFC_PROTOCOL pb_protocol; /* Passive poll B SWP Reader   */
+  uint8_t ee_req_op;             /* add or remove req ntf*/
+#endif
 } tNFA_EE_DISCOVER_INFO;
 
 /* Data for NFA_EE_DISCOVER_REQ_EVT */
@@ -195,6 +271,10 @@ typedef union {
   tNFA_EE_CONNECT connect;
   tNFA_EE_ACTION action;
   tNFA_EE_MODE_SET mode_set;
+#if (NXP_EXTNS == TRUE)
+  tNFA_EE_SET_MODE_INFO ee_set_mode_info;
+  tNFA_EE_PWR_LNK_CTRL pwr_lnk_ctrl;
+#endif
   tNFA_EE_INFO new_ee;
   tNFA_EE_DISCOVER_REQ discover_req;
 } tNFA_EE_CBACK_DATA;
@@ -238,6 +318,24 @@ extern tNFA_STATUS NFA_EeDiscover(tNFA_EE_CBACK* p_cback);
 *******************************************************************************/
 extern tNFA_STATUS NFA_EeGetInfo(uint8_t* p_num_nfcee, tNFA_EE_INFO* p_info);
 
+#if (NXP_EXTNS == TRUE)
+/*******************************************************************************
+**
+** Function         NFA_AllEeGetInfo
+**
+** Description      This function retrieves the All NFCEE's independent of
+**                  their status information from NFA.
+**                  The actual number of NFCEE is returned in p_num_nfcee
+**                  and NFCEE information is returned in p_info
+**
+** Returns          NFA_STATUS_OK if information is retrieved successfully
+**                  NFA_STATUS_FAILED If wrong state (retry later)
+**                  NFA_STATUS_INVALID_PARAM If bad parameter
+**
+*******************************************************************************/
+extern tNFA_STATUS NFA_AllEeGetInfo(uint8_t* p_num_nfcee, tNFA_EE_INFO* p_info);
+#endif
+
 /*******************************************************************************
 **
 ** Function         NFA_EeRegister
@@ -264,7 +362,19 @@ extern tNFA_STATUS NFA_EeRegister(tNFA_EE_CBACK* p_cback);
 **
 *******************************************************************************/
 extern tNFA_STATUS NFA_EeDeregister(tNFA_EE_CBACK* p_cback);
-
+/*******************************************************************************
+**
+** Function         NFA_SendPowerLinkCommand
+**
+** Description      This function sends the power link control command
+**
+** Returns          NFA_STATUS_OK if successfully initiated
+**                  NFA_STATUS_FAILED otherwise
+**                  NFA_STATUS_INVALID_PARAM If bad parameter
+**
+*******************************************************************************/
+extern tNFA_STATUS NFA_SendPowerLinkCommand(uint8_t nfcee_id, uint8_t cfg_value,
+                                            tNFC_INTF_REQ_SRC reqSrc);
 /*******************************************************************************
 **
 ** Function         NFA_EeModeSet
@@ -336,9 +446,9 @@ extern tNFA_STATUS NFA_EeSetDefaultProtoRouting(
     tNFA_HANDLE ee_handle, tNFA_PROTOCOL_MASK protocols_switch_on,
     tNFA_PROTOCOL_MASK protocols_switch_off,
     tNFA_PROTOCOL_MASK protocols_battery_off,
-    tNFA_PROTOCOL_MASK technologies_screen_lock,
-    tNFA_PROTOCOL_MASK technologies_screen_off,
-    tNFA_PROTOCOL_MASK technologies_screen_off_lock);
+    tNFA_PROTOCOL_MASK protocols_screen_lock,
+    tNFA_PROTOCOL_MASK protocols_screen_off,
+    tNFA_PROTOCOL_MASK protocols_screen_off_lock);
 
 /*******************************************************************************
 **
@@ -387,6 +497,52 @@ extern tNFA_STATUS NFA_EeAddAidRouting(tNFA_HANDLE ee_handle, uint8_t aid_len,
 **
 *******************************************************************************/
 extern tNFA_STATUS NFA_EeRemoveAidRouting(uint8_t aid_len, uint8_t* p_aid);
+
+/*******************************************************************************
+**
+** Function         NFA_EeAddApduPatternRouting
+**
+** Description      This function is called to add an APDU pattern entry in the
+**                  listen mode routing table in NFCC. The status of this
+**                  operation is reported as the NFA_EE_ADD_APDU_EVT.
+**
+** Note:            If RF discovery is started,
+**                  NFA_StopRfDiscovery()/NFA_RF_DISCOVERY_STOPPED_EVT should
+**                  happen before calling this function
+**
+** Note:            NFA_EeUpdateNow() should be called after last NFA-EE
+**                  function to change the listen mode routing is called.
+**
+** Returns          NFA_STATUS_OK if successfully initiated
+**                  NFA_STATUS_FAILED otherwise
+**                  NFA_STATUS_INVALID_PARAM If bad parameter
+**
+*******************************************************************************/
+extern tNFA_STATUS NFA_EeAddApduPatternRouting(uint8_t apdu_data_len,uint8_t* apdu_data, uint8_t apdu_mask_len,
+  uint8_t* apdu_mask, tNFA_HANDLE ee_handle, uint8_t power_state);
+
+/*******************************************************************************
+**
+** Function         NFA_EeRemoveApduPatternRouting
+**
+** Description      This function is called to remove the given APDU pattern entry from
+**                  the listen mode routing table. If the entry configures VS,
+**                  it is also removed. The status of this operation is reported
+**                  as the NFA_EE_REMOVE_APDU_EVT.
+**
+** Note:            If RF discovery is started,
+**                  NFA_StopRfDiscovery()/NFA_RF_DISCOVERY_STOPPED_EVT should
+**                  happen before calling this function
+**
+** Note:            NFA_EeUpdateNow() should be called after last NFA-EE
+**                  function to change the listen mode routing is called.
+**
+** Returns          NFA_STATUS_OK if successfully initiated
+**                  NFA_STATUS_FAILED otherwise
+**                  NFA_STATUS_INVALID_PARAM If bad parameter
+**
+*******************************************************************************/
+extern tNFA_STATUS NFA_EeRemoveApduPatternRouting(uint8_t apdu_len, uint8_t* p_apdu);
 
 /*******************************************************************************
  **
@@ -516,5 +672,78 @@ extern tNFA_STATUS NFA_EeSendData(tNFA_HANDLE ee_handle, uint16_t data_len,
 **
 *******************************************************************************/
 extern tNFA_STATUS NFA_EeDisconnect(tNFA_HANDLE ee_handle);
+
+#if (NXP_EXTNS == TRUE)
+/*******************************************************************************
+**
+** Function         NFA_AddEePowerState
+**
+** Description      This function is called to add power state in the
+**                  listen mode routing table in NFCC.
+**
+** Note:            If RF discovery is started,
+*NFA_StopRfDiscovery()/NFA_RF_DISCOVERY_STOPPED_EVT
+**                  should happen before calling this function
+**
+** Note:            NFA_EeUpdateNow() should be called after last NFA-EE
+*function
+**                  to change the listen mode routing is called.
+**
+** Returns          NFA_STATUS_OK if successfully initiated
+**                  NFA_STATUS_FAILED otherwise
+**                  NFA_STATUS_INVALID_PARAM If bad parameter
+**
+*******************************************************************************/
+extern tNFA_STATUS NFA_AddEePowerState(tNFA_HANDLE ee_handle,
+                                       tNFA_EE_PWR_STATE power_state_mask);
+
+/*******************************************************************************
+**
+** Function         NFA_GetAidTableSize
+**
+** Description      This function is called to get the AID routing table size.
+**
+** Returns          Maximum AID routing table size.
+**
+*******************************************************************************/
+extern uint16_t NFA_GetAidTableSize();
+
+/*******************************************************************************
+**
+** Function         NFA_GetRemainingAidTableSize
+**
+** Description      This function is called to get the remaining AID routing
+**                  table size.
+**
+** Returns          Remaining AID routing table size.
+**
+*******************************************************************************/
+extern uint16_t NFA_GetRemainingAidTableSize();
+
+/*******************************************************************************
+**
+** Function         NFA_SetCEStrictDisable
+**
+** Description      This function is called to set the flag for Strict CE.
+**
+** Returns          None.
+**
+*******************************************************************************/
+extern void NFA_SetCEStrictDisable(uint32_t state);
+
+/*******************************************************************************
+**
+** Function         NFA_setProvisionMode
+**
+** Description      This function is called to set/reset the provision mode
+*info.
+**
+** Returns          None.
+**
+*******************************************************************************/
+extern void NFA_setProvisionMode(bool provisionMode);
+
+#endif
+
 
 #endif /* NFA_EE_API_H */

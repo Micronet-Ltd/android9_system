@@ -47,8 +47,13 @@ extern bool nfc_debug_enabled;
 tNFC_CONN_CB* nfc_alloc_conn_cb(tNFC_CONN_CBACK* p_cback) {
   int xx, max = NCI_MAX_CONN_CBS;
   tNFC_CONN_CB* p_conn_cb = NULL;
-
+#if (NXP_EXTNS == TRUE)
+  if(nfcFL.chipType != pn547C2) {
+      NFC_CHECK_MAX_CONN();
+  }
+#else
   NFC_CHECK_MAX_CONN();
+#endif
   for (xx = 0; xx < max; xx++) {
     if (nfc_cb.conn_cb[xx].conn_id == NFC_ILLEGAL_CONN_ID) {
       nfc_cb.conn_cb[xx].conn_id =
@@ -79,8 +84,7 @@ void nfc_set_conn_id(tNFC_CONN_CB* p_cb, uint8_t conn_id) {
   p_cb->conn_id = conn_id;
   handle = (uint8_t)(p_cb - nfc_cb.conn_cb + 1);
   nfc_cb.conn_id[conn_id] = handle;
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("nfc_set_conn_id conn_id:%d, handle:%d", conn_id, handle);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfc_set_conn_id conn_id:%d, handle:%d", conn_id, handle);
 }
 
 /*******************************************************************************
@@ -181,7 +185,8 @@ extern void nfc_reset_all_conn_cbs(void) {
 
   deact.status = NFC_STATUS_NOT_INITIALIZED;
   deact.type = NFC_DEACTIVATE_TYPE_IDLE;
-  deact.is_ntf = TRUE;
+  deact.is_ntf = true;
+  deact.reason = NCI_DEACTIVATE_REASON_DH_REQ;
   for (xx = 0; xx < NCI_MAX_CONN_CBS; xx++, p_conn_cb++) {
     if (p_conn_cb->conn_id != NFC_ILLEGAL_CONN_ID) {
       if (p_conn_cb->p_cback) {

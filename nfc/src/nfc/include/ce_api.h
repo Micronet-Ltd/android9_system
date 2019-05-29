@@ -26,9 +26,9 @@
 #ifndef CE_API_H
 #define CE_API_H
 
-#include <stdbool.h>
 #include "nfc_api.h"
 #include "nfc_types.h"
+#include <stdbool.h>
 #include "tags_defs.h"
 
 #define CE_T3T_FIRST_EVT 0x60
@@ -137,7 +137,7 @@ extern tNFC_STATUS CE_T3tSendUpdateRsp(uint8_t status1, uint8_t status2);
 **                      CE_T4T_UPDATE_ABORT_EVT for failure of update
 **                      CE_T4T_RAW_FRAME_EVT for raw frame
 **
-**                  read_only:      TRUE if read only
+**                  read_only:      true if read only
 **                  ndef_msg_max:   Max NDEF message size
 **                  ndef_msg_len:   NDEF message size
 **                  p_ndef_msg:     NDEF message (excluding NLEN)
@@ -205,4 +205,5 @@ extern tNFC_STATUS CE_SendRawFrame(uint8_t* p_raw_data, uint16_t data_len);
 extern tNFC_STATUS CE_SetActivatedTagType(tNFC_ACTIVATE_DEVT* p_activate_params,
                                           uint16_t t3t_system_code,
                                           tCE_CBACK* p_cback);
+
 #endif /* CE_API_H */

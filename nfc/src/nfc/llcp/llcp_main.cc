@@ -27,8 +27,8 @@
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
 
-#include "bt_types.h"
 #include "gki.h"
+#include "bt_types.h"
 #include "llcp_api.h"
 #include "llcp_int.h"
 #include "nfc_int.h"
@@ -54,7 +54,7 @@ void llcp_init(void) {
 
   memset(&llcp_cb, 0, sizeof(tLLCP_CB));
 
-  DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("LLCP - llcp_init ()");
 
   llcp_cb.lcb.local_link_miu =
       (LLCP_MIU <= LLCP_MAX_MIU ? LLCP_MIU : LLCP_MAX_MIU);
@@ -99,9 +99,8 @@ void llcp_init(void) {
   llcp_cb.max_num_ll_tx_buff =
       (uint8_t)((llcp_cb.max_num_tx_buff * LLCP_LL_TX_BUFF_LIMIT) / 100);
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("max_num_tx_buff = %d, max_num_ll_tx_buff = %d",
-                      llcp_cb.max_num_tx_buff, llcp_cb.max_num_ll_tx_buff);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("max_num_tx_buff = %d, max_num_ll_tx_buff = %d",
+                    llcp_cb.max_num_tx_buff, llcp_cb.max_num_ll_tx_buff);
 
   llcp_cb.ll_tx_uncongest_ntf_start_sap = LLCP_SAP_SDP + 1;
 
@@ -122,7 +121,7 @@ void llcp_cleanup(void) {
   uint8_t sap;
   tLLCP_APP_CB* p_app_cb;
 
-  DLOG_IF(INFO, nfc_debug_enabled) << __func__;
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("LLCP - llcp_cleanup ()");
 
   for (sap = LLCP_SAP_SDP; sap < LLCP_NUM_SAPS; sap++) {
     p_app_cb = llcp_util_get_app_cb(sap);
@@ -148,8 +147,7 @@ void llcp_cleanup(void) {
 void llcp_process_timeout(TIMER_LIST_ENT* p_tle) {
   uint8_t reason;
 
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("llcp_process_timeout: event=%d", p_tle->event);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("llcp_process_timeout: event=%d", p_tle->event);
 
   switch (p_tle->event) {
     case NFC_TTYPE_LLCP_LINK_MANAGER:

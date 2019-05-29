@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2015-2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 #ifndef GKI_TARGET_H
 #define GKI_TARGET_H
 
@@ -91,7 +110,7 @@
 
 /* The number of GKI tasks in the software system. */
 #ifndef GKI_MAX_TASKS
-#define GKI_MAX_TASKS 14
+#define GKI_MAX_TASKS 15
 #endif
 
 /******************************************************************************
@@ -206,8 +225,7 @@ Devices with small amount of RAM should limit the number of active obex objects.
 
 /* The number of buffers in buffer pool 4. */
 #ifndef GKI_BUF4_MAX
-/* (OBX_NUM_SERVERS + OBX_NUM_CLIENTS) */
-#define GKI_BUF4_MAX 96
+#define GKI_BUF4_MAX 96 /* (OBX_NUM_SERVERS + OBX_NUM_CLIENTS) */
 #endif
 
 /* The ID of buffer pool 4. */
@@ -216,11 +234,11 @@ Devices with small amount of RAM should limit the number of active obex objects.
 #endif
 
 /* The number of fixed GKI buffer pools.
-If L2CAP_FCR_INCLUDED is FALSE, Pool ID 5 is unnecessary
-If BTM_SCO_HCI_INCLUDED is FALSE, Pool ID 6 is unnecessary, otherwise set to 7
-If BTA_HL_INCLUDED is FALSE then Pool ID 7 is uncessary and set the following to
+If L2CAP_FCR_INCLUDED is false, Pool ID 5 is unnecessary
+If BTM_SCO_HCI_INCLUDED is false, Pool ID 6 is unnecessary, otherwise set to 7
+If BTA_HL_INCLUDED is false then Pool ID 7 is uncessary and set the following to
 7, otherwise set to 8
-If GATT_SERVER_ENABLED is FALSE then Pool ID 8 is uncessary and set the
+If GATT_SERVER_ENABLED is false then Pool ID 8 is uncessary and set the
 following to 8, otherwise set to 9
 */
 #ifndef GKI_NUM_FIXED_BUF_POOLS
@@ -233,7 +251,7 @@ following to 8, otherwise set to 9
 #endif
 
 /* The number of fixed and dynamic buffer pools.
-If L2CAP_FCR_INCLUDED is FALSE, Pool ID 4 is unnecessary */
+If L2CAP_FCR_INCLUDED is false, Pool ID 4 is unnecessary */
 #ifndef GKI_NUM_TOTAL_BUF_POOLS
 #define GKI_NUM_TOTAL_BUF_POOLS 10
 #endif
@@ -265,7 +283,7 @@ of order */
 
 /* The buffer corruption check flag. */
 #ifndef GKI_ENABLE_BUF_CORRUPTION_CHECK
-#define GKI_ENABLE_BUF_CORRUPTION_CHECK TRUE
+#define GKI_ENABLE_BUF_CORRUPTION_CHECK true
 #endif
 
 /* The GKI severe error macro. */
@@ -284,7 +302,7 @@ of order */
 #endif
 
 #ifndef GKI_SEND_MSG_FROM_ISR
-#define GKI_SEND_MSG_FROM_ISR FALSE
+#define GKI_SEND_MSG_FROM_ISR false
 #endif
 
 /* The following is intended to be a reserved pool for SCO
