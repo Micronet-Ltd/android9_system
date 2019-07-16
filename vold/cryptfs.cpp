@@ -62,6 +62,7 @@
 #include "Process.h"
 #include "Keymaster.h"
 #include "android-base/properties.h"
+#include "android-base/stringprintf.h"
 #include <bootloader_message/bootloader_message.h>
 #ifdef CONFIG_HW_DISK_ENCRYPTION
 #include <cryptfs_hw.h>
@@ -69,6 +70,8 @@
 extern "C" {
 #include <crypto_scrypt.h>
 }
+
+using android::base::StringPrintf;
 
 #define UNUSED __attribute__((unused))
 
@@ -467,6 +470,10 @@ constexpr CryptoType default_crypto_type = CryptoType()
 
 constexpr CryptoType supported_crypto_types[] = {
     default_crypto_type,
+    CryptoType()
+        .set_property_name("adiantum")
+        .set_crypto_name("xchacha12,aes-adiantum-plain64")
+        .set_keysize(32),
     // Add new CryptoTypes here.  Order is not important.
 };
 
@@ -1247,6 +1254,23 @@ static std::string extra_params_as_string(const std::vector<std::string>& extra_
 }
 #endif
 
+// Only adds parameters if the property is set.
+#ifndef CONFIG_HW_DISK_ENCRYPTION
+static void add_sector_size_param(std::vector<std::string>* extra_params_vec) {
+    constexpr char DM_CRYPT_SECTOR_SIZE[] = "ro.crypto.fde_sector_size";
+    char sector_size[PROPERTY_VALUE_MAX];
+
+    if (property_get(DM_CRYPT_SECTOR_SIZE, sector_size, "") > 0) {
+        std::string param = StringPrintf("sector_size:%s", sector_size);
+        extra_params_vec->push_back(std::move(param));
+
+        // With this option, IVs will match the sector numbering, instead
+        // of being hard-coded to being based on 512-byte sectors.
+        extra_params_vec->emplace_back("iv_large_sectors");
+    }
+}
+#endif
+
 static int create_crypto_blk_dev(struct crypt_mnt_ftr* crypt_ftr, const unsigned char* master_key,
                                  const char* real_blk_name, char* crypto_blk_name, const char* name,
                                  uint32_t flags) {
@@ -1262,9 +1286,8 @@ static int create_crypto_blk_dev(struct crypt_mnt_ftr* crypt_ftr, const unsigned
     char encrypted_state[PROPERTY_VALUE_MAX] = {0};
     char progress[PROPERTY_VALUE_MAX] = {0};
     const char *extra_params;
-#else
-    std::vector<std::string> extra_params_vec;
 #endif
+    std::vector<std::string> extra_params_vec;
 
     if ((fd = open("/dev/device-mapper", O_RDWR | O_CLOEXEC)) < 0) {
         SLOGE("Cannot open device-mapper\n");
@@ -1312,15 +1335,14 @@ static int create_crypto_blk_dev(struct crypt_mnt_ftr* crypt_ftr, const unsigned
           else
             extra_params = "fde_enabled";
       }
+      extra_params_vec.emplace_back(extra_params);
     } else {
-      extra_params = "";
       if (! get_dm_crypt_version(fd, name, version)) {
         /* Support for allow_discards was added in version 1.11.0 */
         if ((version[0] >= 2) || ((version[0] == 1) && (version[1] >= 11))) {
+          extra_params_vec.emplace_back("allow_discards");
           if (flags & CREATE_CRYPTO_BLK_DEV_FLAGS_ALLOW_ENCRYPT_OVERRIDE)
-            extra_params = "2 allow_discards allow_encrypt_override";
-          else
-            extra_params = "1 allow_discards";
+            extra_params_vec.emplace_back("allow_encrypt_override");
           SLOGI("Enabling support for allow_discards in dmcrypt.\n");
         }
       }
@@ -1337,6 +1359,7 @@ static int create_crypto_blk_dev(struct crypt_mnt_ftr* crypt_ftr, const unsigned
     if (flags & CREATE_CRYPTO_BLK_DEV_FLAGS_ALLOW_ENCRYPT_OVERRIDE) {
         extra_params_vec.emplace_back("allow_encrypt_override");
     }
+    add_sector_size_param(&extra_params_vec);
     load_count = load_crypto_mapping_table(crypt_ftr, master_key, real_blk_name, name, fd,
                                            extra_params_as_string(extra_params_vec).c_str());
 #endif
@@ -3101,25 +3124,24 @@ int cryptfs_changepw_hw_fde(int crypt_type, const char *currentpw, const char *n
 static unsigned int persist_get_max_entries(int encrypted) {
     struct crypt_mnt_ftr crypt_ftr;
     unsigned int dsize;
+    unsigned int max_persistent_entries;
 
     /* If encrypted, use the values from the crypt_ftr, otherwise
      * use the values for the current spec.
      */
     if (encrypted) {
         if (get_crypt_ftr_and_key(&crypt_ftr)) {
-            /* Something is wrong, assume no space for entries */
-            return 0;
+            return -1;
         }
         dsize = crypt_ftr.persist_data_size;
     } else {
         dsize = CRYPT_PERSIST_DATA_SIZE;
     }
 
-    if (dsize > sizeof(struct crypt_persist_data)) {
-        return (dsize - sizeof(struct crypt_persist_data)) / sizeof(struct crypt_persist_entry);
-    } else {
-        return 0;
-    }
+    max_persistent_entries = (dsize - sizeof(struct crypt_persist_data)) /
+        sizeof(struct crypt_persist_entry);
+
+    return max_persistent_entries;
 }
 
 static int persist_get_key(const char *fieldname, char *value)
