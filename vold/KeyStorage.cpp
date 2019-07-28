@@ -143,7 +143,7 @@ bool generateWrappedKey(userid_t user_id, KeyType key_type,
     paramBuilder.push_back(param1);
 
     km::KeyParameter param2;
-    if ((key_type == KeyType::DE_USER) || (key_type == KeyType::DE_SYS)) {
+    if ((key_type == KeyType::DE_USER) || (key_type == KeyType::DE_SYS) || (key_type == KeyType::ME)) {
         param2.tag = (km::Tag) (android::hardware::keymaster::V4_0::KM_TAG_KEY_TYPE);
         param2.f.integer = 0;
     } else if (key_type == KeyType::CE_USER) {
@@ -162,10 +162,28 @@ bool getEphemeralWrappedKey(km::KeyFormat format, KeyBuffer& kmKey, KeyBuffer* k
     std::string key_temp;
     Keymaster keymaster;
     if (!keymaster) return false;
-    if (!keymaster.exportKey(format, kmKey, "!", "!", &key_temp)) return false;
-    *key = KeyBuffer(key_temp.size());
-    memcpy(reinterpret_cast<void*>(key->data()), key_temp.c_str(), key->size());
-    return true;
+
+    //Export once, if upgrade needed, upgrade and export again
+    bool export_again = true;
+    while (export_again) {
+        export_again = false;
+        auto ret = keymaster.exportKey(format, kmKey, "!", "!", &key_temp);
+        if (ret == km::ErrorCode::OK) {
+            *key = KeyBuffer(key_temp.size());
+            memcpy(reinterpret_cast<void*>(key->data()), key_temp.c_str(), key->size());
+            return true;
+        }
+        if (ret != km::ErrorCode::KEY_REQUIRES_UPGRADE) return false;
+        LOG(DEBUG) << "Upgrading key";
+        std::string kmKeyStr(reinterpret_cast<const char*>(kmKey.data()), kmKey.size());
+        std::string newKey;
+        if (!keymaster.upgradeKey(kmKeyStr, km::AuthorizationSet(), &newKey)) return false;
+        memcpy(reinterpret_cast<void*>(kmKey.data()), newKey.c_str(), kmKey.size());
+        LOG(INFO) << "Key upgraded";
+        export_again = true;
+    }
+    //Should never come here
+    return false;
 }
 
 static std::pair<km::AuthorizationSet, km::HardwareAuthToken> beginParams(
@@ -522,6 +540,7 @@ bool storeKey(const std::string& dir, const KeyAuthentication& auth, const KeyBu
         if (!encryptWithoutKeymaster(appId, key, &encryptedKey)) return false;
     }
     if (!writeStringToFile(encryptedKey, dir + "/" + kFn_encrypted_key)) return false;
+    if (!FsyncDirectory(dir)) return false;
     return true;
 }
 

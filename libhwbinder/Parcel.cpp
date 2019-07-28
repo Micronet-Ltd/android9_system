@@ -196,7 +196,7 @@ inline static status_t finish_flatten_binder(
 status_t flatten_binder(const sp<ProcessState>& /*proc*/,
     const sp<IBinder>& binder, Parcel* out)
 {
-    flat_binder_object obj;
+    flat_binder_object obj = {};
 
     if (binder != NULL) {
         BHwBinder *local = binder->localBinder();
@@ -219,6 +219,9 @@ status_t flatten_binder(const sp<ProcessState>& /*proc*/,
             obj.flags = priority & FLAT_BINDER_FLAG_PRIORITY_MASK;
             obj.flags |= FLAT_BINDER_FLAG_ACCEPTS_FDS | FLAT_BINDER_FLAG_INHERIT_RT;
             obj.flags |= (policy & 3) << FLAT_BINDER_FLAG_SCHEDPOLICY_SHIFT;
+            if (local->isRequestingSid()) {
+                obj.flags |= FLAT_BINDER_FLAG_TXN_SECURITY_CTX;
+            }
             obj.hdr.type = BINDER_TYPE_BINDER;
             obj.binder = reinterpret_cast<uintptr_t>(local->getWeakRefs());
             obj.cookie = reinterpret_cast<uintptr_t>(local);
@@ -235,7 +238,7 @@ status_t flatten_binder(const sp<ProcessState>& /*proc*/,
 status_t flatten_binder(const sp<ProcessState>& /*proc*/,
     const wp<IBinder>& binder, Parcel* out)
 {
-    flat_binder_object obj;
+    flat_binder_object obj = {};
 
     obj.flags = 0x7f | FLAT_BINDER_FLAG_ACCEPTS_FDS;
     if (binder != NULL) {
@@ -839,15 +842,16 @@ status_t Parcel::writeEmbeddedBuffer(
     LOG_BUFFER("writeEmbeddedBuffer(%p, %zu, parent = (%zu, %zu)) -> %zu",
         buffer, length, parent_buffer_handle,
          parent_offset, mObjectsSize);
-    binder_buffer_object obj;
-    obj.hdr.type = BINDER_TYPE_PTR;
-    obj.buffer = reinterpret_cast<binder_uintptr_t>(buffer);
-    obj.length = length;
-    obj.flags = BINDER_BUFFER_FLAG_HAS_PARENT;
     if(!validateBufferParent(parent_buffer_handle, parent_offset))
         return BAD_VALUE;
-    obj.parent = parent_buffer_handle;
-    obj.parent_offset = parent_offset;
+    binder_buffer_object obj = {
+        .hdr = { .type = BINDER_TYPE_PTR },
+        .buffer = reinterpret_cast<binder_uintptr_t>(buffer),
+        .length = length,
+        .flags = BINDER_BUFFER_FLAG_HAS_PARENT,
+        .parent = parent_buffer_handle,
+        .parent_offset = parent_offset,
+    };
     if (handle != nullptr) {
         // We use an index into mObjects as a handle
         *handle = mObjectsSize;
@@ -859,11 +863,12 @@ status_t Parcel::writeBuffer(const void *buffer, size_t length, size_t *handle)
 {
     LOG_BUFFER("writeBuffer(%p, %zu) -> %zu",
         buffer, length, mObjectsSize);
-    binder_buffer_object obj;
-    obj.hdr.type = BINDER_TYPE_PTR;
-    obj.buffer = reinterpret_cast<binder_uintptr_t>(buffer);
-    obj.length = length;
-    obj.flags = 0;
+    binder_buffer_object obj {
+        .hdr = { .type = BINDER_TYPE_PTR },
+        .buffer = reinterpret_cast<binder_uintptr_t>(buffer),
+        .length = length,
+        .flags = 0,
+    };
     if (handle != nullptr) {
         // We use an index into mObjects as a handle
         *handle = mObjectsSize;
@@ -885,15 +890,16 @@ status_t Parcel::writeReference(size_t *handle,
     status_t status = incrementNumReferences();
     if (status != OK)
         return status;
-    binder_buffer_object obj;
-    obj.hdr.type = BINDER_TYPE_PTR;
-    obj.flags = BINDER_BUFFER_FLAG_REF;
     if (!validateBufferChild(child_buffer_handle, child_offset))
         return BAD_VALUE;
-    // The current binder.h does not have child and child_offset names yet.
-    // Use the buffer and length parameters.
-    obj.buffer = child_buffer_handle;
-    obj.length = child_offset;
+    binder_buffer_object obj {
+        .hdr = { .type = BINDER_TYPE_PTR },
+        .flags = BINDER_BUFFER_FLAG_REF,
+        // The current binder.h does not have child and child_offset names yet.
+        // Use the buffer and length parameters.
+        .buffer = child_buffer_handle,
+        .length = child_offset,
+    };
     if (handle != nullptr)
         // We use an index into mObjects as a handle
         *handle = mObjectsSize;
@@ -912,19 +918,20 @@ status_t Parcel::writeEmbeddedReference(size_t *handle,
     status_t status = incrementNumReferences();
     if (status != OK)
         return status;
-    binder_buffer_object obj;
-    obj.hdr.type = BINDER_TYPE_PTR;
-    obj.flags = BINDER_BUFFER_FLAG_REF | BINDER_BUFFER_FLAG_HAS_PARENT;
-    if (!validateBufferChild(child_buffer_handle, child_offset))
-        return BAD_VALUE;
     // The current binder.h does not have child and child_offset names yet.
     // Use the buffer and length parameters.
-    obj.buffer = child_buffer_handle;
-    obj.length = child_offset;
+    if (!validateBufferChild(child_buffer_handle, child_offset))
+        return BAD_VALUE;
     if(!validateBufferParent(parent_buffer_handle, parent_offset))
         return BAD_VALUE;
-    obj.parent = parent_buffer_handle;
-    obj.parent_offset = parent_offset;
+    binder_buffer_object obj {
+        .hdr = { .type = BINDER_TYPE_PTR },
+        .flags = BINDER_BUFFER_FLAG_REF | BINDER_BUFFER_FLAG_HAS_PARENT,
+        .buffer = child_buffer_handle,
+        .length = child_offset,
+        .parent = parent_buffer_handle,
+        .parent_offset = parent_offset,
+    };
     if (handle != nullptr) {
         // We use an index into mObjects as a handle
         *handle = mObjectsSize;
@@ -937,9 +944,12 @@ status_t Parcel::writeNullReference(size_t * handle) {
     status_t status = incrementNumReferences();
     if (status != OK)
         return status;
-    binder_buffer_object obj;
-    obj.hdr.type = BINDER_TYPE_PTR;
-    obj.flags = BINDER_BUFFER_FLAG_REF;
+
+    binder_buffer_object obj {
+        .hdr = { .type = BINDER_TYPE_PTR },
+        .flags = BINDER_BUFFER_FLAG_REF,
+    };
+
     if (handle != nullptr)
         // We use an index into mObjects as a handle
         *handle = mObjectsSize;
@@ -955,14 +965,14 @@ status_t Parcel::writeEmbeddedNullReference(size_t * handle,
     status_t status = incrementNumReferences();
     if (status != OK)
         return status;
-    binder_buffer_object obj;
-    obj.hdr.type = BINDER_TYPE_PTR;
-    obj.flags = BINDER_BUFFER_FLAG_REF | BINDER_BUFFER_FLAG_HAS_PARENT;
-    // parent_buffer_handle and parent_offset needs to be checked.
     if(!validateBufferParent(parent_buffer_handle, parent_offset))
         return BAD_VALUE;
-    obj.parent = parent_buffer_handle;
-    obj.parent_offset = parent_offset;
+    binder_buffer_object obj {
+        .hdr = { .type = BINDER_TYPE_PTR, },
+        .flags = BINDER_BUFFER_FLAG_REF | BINDER_BUFFER_FLAG_HAS_PARENT,
+        .parent = parent_buffer_handle,
+        .parent_offset = parent_offset,
+    };
     if (handle != nullptr) {
         // We use an index into mObjects as a handle
         *handle = mObjectsSize;
@@ -1047,7 +1057,6 @@ status_t Parcel::writeNativeHandleNoDup(const native_handle_t *handle,
                                         size_t parent_buffer_handle,
                                         size_t parent_offset)
 {
-    struct binder_fd_array_object fd_array;
     size_t buffer_handle;
     status_t status = OK;
 
@@ -1072,10 +1081,12 @@ status_t Parcel::writeNativeHandleNoDup(const native_handle_t *handle,
         return status;
     }
 
-    fd_array.hdr.type = BINDER_TYPE_FDA;
-    fd_array.num_fds = handle->numFds;
-    fd_array.parent = buffer_handle;
-    fd_array.parent_offset = offsetof(native_handle_t, data);
+    struct binder_fd_array_object fd_array {
+        .hdr = { .type = BINDER_TYPE_FDA },
+        .num_fds = static_cast<binder_size_t>(handle->numFds),
+        .parent = buffer_handle,
+        .parent_offset = offsetof(native_handle_t, data),
+    };
 
     return writeObject(fd_array);
 }
@@ -1708,6 +1719,24 @@ status_t Parcel::readNullableNativeHandleNoDup(const native_handle_t **handle,
         return status;
     }
 
+    int numFds = (*handle)->numFds;
+    int numInts = (*handle)->numInts;
+
+    if (numFds < 0 || numFds > NATIVE_HANDLE_MAX_FDS) {
+        ALOGE("Received native_handle with invalid number of fds.");
+        return BAD_VALUE;
+    }
+
+    if (numInts < 0 || numInts > NATIVE_HANDLE_MAX_INTS) {
+        ALOGE("Received native_handle with invalid number of ints.");
+        return BAD_VALUE;
+    }
+
+    if (nativeHandleSize != (sizeof(native_handle_t) + ((numFds + numInts) * sizeof(int)))) {
+        ALOGE("Size of native_handle doesn't match.");
+        return BAD_VALUE;
+    }
+
     const binder_fd_array_object* fd_array_obj = readObject<binder_fd_array_object>();
 
     if (fd_array_obj == nullptr || fd_array_obj->hdr.type != BINDER_TYPE_FDA) {
@@ -1715,7 +1744,7 @@ status_t Parcel::readNullableNativeHandleNoDup(const native_handle_t **handle,
         return BAD_VALUE;
     }
 
-    if (static_cast<int>(fd_array_obj->num_fds) != (*handle)->numFds) {
+    if (static_cast<int>(fd_array_obj->num_fds) != numFds) {
         ALOGE("Number of native handles does not match.");
         return BAD_VALUE;
     }
