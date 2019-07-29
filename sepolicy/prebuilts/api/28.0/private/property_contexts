@@ -145,3 +145,4 @@ odm.                    u:object_r:vendor_default_prop:s0
 persist.odm.            u:object_r:vendor_default_prop:s0
 persist.vendor.         u:object_r:vendor_default_prop:s0
 vendor.                 u:object_r:vendor_default_prop:s0
+iodriver.boot_complete	   u:object_r:iodriver_boot_complete:s0

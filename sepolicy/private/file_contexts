@@ -541,3 +541,5 @@
 #############################
 # mount point for read-write vendor partitions
 /mnt/vendor(/.*)?          u:object_r:mnt_vendor_file:s0
+
+/sbin/iodriver        	u:object_r:iodriver_exec:s0
