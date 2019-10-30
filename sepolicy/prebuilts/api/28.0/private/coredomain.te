@@ -11,6 +11,5 @@ neverallow {
     # generic access to sysfs_type
     -ueventd
     -vold
-    -iodriver
 } sysfs_leds:file *;
 ')

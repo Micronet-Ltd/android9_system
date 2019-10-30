@@ -20,4 +20,3 @@ domain_trans(init, { rootfs toolbox_exec }, modprobe)
 userdebug_or_eng(`
   domain_auto_trans(init, logcat_exec, logpersist)
 ')
-allow init iodriver_boot_complete:property_service set;
