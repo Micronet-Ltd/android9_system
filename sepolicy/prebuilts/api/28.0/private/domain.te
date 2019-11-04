@@ -40,6 +40,7 @@ full_treble_only(`
     coredomain
     -init
     -ueventd
+    -system_server
     -vold
   } sysfs:file no_rw_file_perms;
 
