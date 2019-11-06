@@ -11,6 +11,7 @@ full_treble_only(`
     neverallow {
         coredomain
         -init
+	-shell
         -modprobe
     } vendor_toolbox_exec:file { entrypoint execute execute_no_trans };
 ')
