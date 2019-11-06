@@ -13,4 +13,11 @@ full_treble_only(`
         -init
         -modprobe
     } vendor_toolbox_exec:file { entrypoint execute execute_no_trans };
+    # allow shell to transition to vendor toolbox
+    #neverallow {
+    #    coredomain
+    #    -init
+    #    -shell
+    #    -modprobe
+    #} vendor_toolbox_exec:file { entrypoint execute execute_no_trans };
 ')
