@@ -1,3 +1,0 @@
-type iodriver, domain;
-type iodriver_exec, exec_type, file_type;
-
