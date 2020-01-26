@@ -224,7 +224,7 @@ static int process_config(VolumeManager* vm, bool* has_adoptable, bool* has_quot
     /* Loop through entries looking for ones that vold manages */
     *has_adoptable = false;
     *has_quota = false;
-    *has_reserved = false;
+    *has_reserved = true;
     for (int i = 0; i < fstab_default->num_entries; i++) {
         auto rec = &fstab_default->recs[i];
         if (fs_mgr_is_quota(rec)) {
