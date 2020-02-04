@@ -71,7 +71,7 @@ char* locale;
 
 #define BATTERY_UNKNOWN_TIME (2 * MSEC_PER_SEC)
 #define POWER_ON_KEY_TIME (2 * MSEC_PER_SEC)
-#define UNPLUGGED_SHUTDOWN_TIME (10 * MSEC_PER_SEC)
+#define UNPLUGGED_SHUTDOWN_TIME (2 * MSEC_PER_SEC)
 
 #define LAST_KMSG_MAX_SZ (32 * 1024)
 
@@ -479,8 +479,12 @@ static void handle_power_supply_state(charger* charger, int64_t now) {
         /* Last cycle would have stopped at the extreme top of battery-icon
          * Need to show the correct level corresponding to capacity.
          */
-        kick_animation(charger->batt_anim);
-        request_suspend(false);
+        // kick_animation(charger->batt_anim);
+        // request_suspend(false);
+        reset_animation(charger->batt_anim);
+        charger->next_screen_transition = -1;
+        gr_fb_blank(true);
+        request_suspend(true);
         if (charger->next_pwr_check == -1) {
             charger->next_pwr_check = now + UNPLUGGED_SHUTDOWN_TIME;
             LOGW("[%" PRId64 "] device unplugged: shutting down in %" PRId64 " (@ %" PRId64 ")\n",
