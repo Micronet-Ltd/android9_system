@@ -479,12 +479,15 @@ static void handle_power_supply_state(charger* charger, int64_t now) {
         /* Last cycle would have stopped at the extreme top of battery-icon
          * Need to show the correct level corresponding to capacity.
          */
-        // kick_animation(charger->batt_anim);
-        // request_suspend(false);
+#if 1
+        kick_animation(charger->batt_anim);
+        request_suspend(false);
+#else
         reset_animation(charger->batt_anim);
         charger->next_screen_transition = -1;
         gr_fb_blank(true);
         request_suspend(true);
+#endif
         if (charger->next_pwr_check == -1) {
             charger->next_pwr_check = now + UNPLUGGED_SHUTDOWN_TIME;
             LOGW("[%" PRId64 "] device unplugged: shutting down in %" PRId64 " (@ %" PRId64 ")\n",
