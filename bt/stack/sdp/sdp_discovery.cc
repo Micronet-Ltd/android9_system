@@ -341,13 +341,11 @@ static void process_service_search_rsp(tCONN_CB* p_ccb, uint8_t* p_reply,
  * Description      copy the raw data
  *
  *
- * Returns          bool
- *                          true if successful
- *                          false if not copied
+ * Returns          void
  *
  ******************************************************************************/
 #if (SDP_RAW_DATA_INCLUDED == TRUE)
-static bool sdp_copy_raw_data(tCONN_CB* p_ccb, bool offset) {
+static void sdp_copy_raw_data(tCONN_CB* p_ccb, bool offset) {
   unsigned int cpy_len, rem_len;
   uint32_t list_len;
   uint8_t* p;
@@ -378,11 +376,11 @@ static bool sdp_copy_raw_data(tCONN_CB* p_ccb, bool offset) {
       p = sdpu_get_len_from_type(p, p_end, type, &list_len);
       if (p == NULL || (p + list_len) > p_end) {
         SDP_TRACE_WARNING("%s: bad length", __func__);
-        return false;
+        return;
       }
       if ((int)cpy_len < (p - old_p)) {
         SDP_TRACE_WARNING("%s: no bytes left for data", __func__);
-        return false;
+        return;
       }
       cpy_len -= (p - old_p);
     }
@@ -402,7 +400,6 @@ static bool sdp_copy_raw_data(tCONN_CB* p_ccb, bool offset) {
     memcpy(&p_ccb->p_db->raw_data[p_ccb->p_db->raw_used], p, cpy_len);
     p_ccb->p_db->raw_used += cpy_len;
   }
-  return true;
 }
 #endif
 
@@ -471,12 +468,7 @@ static void process_service_attr_rsp(tCONN_CB* p_ccb, uint8_t* p_reply,
     } else {
 #if (SDP_RAW_DATA_INCLUDED == TRUE)
       SDP_TRACE_WARNING("process_service_attr_rsp");
-      if (!sdp_copy_raw_data(p_ccb, false)) {
-        SDP_TRACE_ERROR("sdp_copy_raw_data failed");
-        sdp_disconnect(p_ccb, SDP_ILLEGAL_PARAMETER);
-        return;
-      }
-
+      sdp_copy_raw_data(p_ccb, false);
 #endif
 
       /* Save the response in the database. Stop on any error */
@@ -701,11 +693,7 @@ static void process_service_search_attr_rsp(tCONN_CB* p_ccb, uint8_t* p_reply,
 
 #if (SDP_RAW_DATA_INCLUDED == TRUE)
   SDP_TRACE_WARNING("process_service_search_attr_rsp");
-  if (!sdp_copy_raw_data(p_ccb, true)) {
-    SDP_TRACE_ERROR("sdp_copy_raw_data failed");
-    sdp_disconnect(p_ccb, SDP_ILLEGAL_PARAMETER);
-    return;
-  }
+  sdp_copy_raw_data(p_ccb, true);
 #endif
 
   p = &p_ccb->rsp_list[0];
@@ -720,7 +708,6 @@ static void process_service_search_attr_rsp(tCONN_CB* p_ccb, uint8_t* p_reply,
   p = sdpu_get_len_from_type(p, p + p_ccb->list_len, type, &seq_len);
   if (p == NULL || (p + seq_len) > (p + p_ccb->list_len)) {
     SDP_TRACE_WARNING("%s: bad length", __func__);
-    sdp_disconnect(p_ccb, SDP_ILLEGAL_PARAMETER);
     return;
   }
   p_end = &p_ccb->rsp_list[p_ccb->list_len];

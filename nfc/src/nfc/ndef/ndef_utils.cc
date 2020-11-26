@@ -22,7 +22,6 @@
  *  and build NFC Data Exchange Format (NDEF) messages
  *
  ******************************************************************************/
-#include <log/log.h>
 #include <string.h>
 #include "ndef_utils.h"
 
@@ -75,7 +74,6 @@ tNDEF_STATUS NDEF_MsgValidate(uint8_t* p_msg, uint32_t msg_len,
                               bool b_allow_chunks) {
   uint8_t* p_rec = p_msg;
   uint8_t* p_end = p_msg + msg_len;
-  uint8_t* p_new;
   uint8_t rec_hdr = 0, type_len, id_len;
   int count;
   uint32_t payload_len;
@@ -195,13 +193,6 @@ tNDEF_STATUS NDEF_MsgValidate(uint8_t* p_msg, uint32_t msg_len,
             p_rec_type[type_index] > NDEF_RTD_VALID_END)
           return (NDEF_MSG_INVALID_TYPE);
       }
-    }
-
-    /* Check for OOB */
-    p_new = p_rec + (payload_len + type_len + id_len);
-    if (p_rec > p_new || p_end < p_new) {
-        android_errorWriteLog(0x534e4554, "126200054");
-        return (NDEF_MSG_LENGTH_MISMATCH);
     }
 
     /* Point to next record */

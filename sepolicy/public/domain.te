@@ -289,11 +289,11 @@ with_asan(`allow domain system_data_file:dir getattr;')
 ###
 
 # All socket ioctls must be restricted to a whitelist.
-neverallowxperm {domain userdebug_or_eng(`-system_app')} self:socket_class_set ioctl { 0 };
+neverallowxperm domain domain:socket_class_set ioctl { 0 };
 
 # b/68014825 and https://android-review.googlesource.com/516535
 # rfc6093 says that processes should not use the TCP urgent mechanism
-neverallowxperm {domain userdebug_or_eng(`-system_app')} self:socket_class_set ioctl { SIOCATMARK };
+neverallowxperm domain domain:socket_class_set ioctl { SIOCATMARK };
 
 # TIOCSTI is only ever used for exploits. Block it.
 # b/33073072, b/7530569
@@ -483,7 +483,6 @@ neverallow { domain -init } properties_serial:file { no_w_file_perms no_x_file_p
 # and invalidate dm-verity signatures.
 neverallow {
     domain
-    userdebug_or_eng(`-system_app')
     with_asan(`-asan_extract')
 } {
     system_file
@@ -1425,5 +1424,4 @@ neverallow {
   coredomain
   -init
   -ueventd
-  userdebug_or_eng(`-system_app')
 } mnt_vendor_file:dir *;

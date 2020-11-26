@@ -40,8 +40,6 @@ full_treble_only(`
     coredomain
     -init
     -ueventd
-    userdebug_or_eng(`-system_server')
-    userdebug_or_eng(`-system_app')
     -vold
   } sysfs:file no_rw_file_perms;
 
